@@ -1354,7 +1354,12 @@
                     }));
                     console.log(`${savedCoordinates.length}件の座標を読み込みました`);
                     updateCoordinatesList();
-                    drawMap();
+
+                    // 確実に再描画されるようrequestAnimationFrameを使用
+                    requestAnimationFrame(() => {
+                        drawMap();
+                    });
+
                     updateStats();
                 } else {
                     console.log('座標データがありません');
@@ -1396,7 +1401,11 @@
                     console.log(`${obstacles.length}件の障害物を読み込みました`);
                     updateObstaclesList();
                     updateCustomObstaclesList();
-                    drawMap();
+
+                    // 確実に再描画されるようrequestAnimationFrameを使用
+                    requestAnimationFrame(() => {
+                        drawMap();
+                    });
                 } else {
                     console.log('障害物データがありません');
                 }
@@ -2018,37 +2027,37 @@
         // 修正1: ドラッグ障害物の確定 - currentModeを引数として受け取る
         function confirmDragObstacle(mode) {
             if (tempSelection.size === 0) return;
-            
+
             // 修正1: dragStartCell.isObstacleではなくmodeから判定
             const isAddMode = (mode !== 'delete');
-            
-            tempSelection.forEach(key => {
-                const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
-                
-                if (isAddMode) {
+
+            if (isAddMode) {
+                // 追加モード：選択したセルを新しい障害物として作成
+                const newCells = [];
+                tempSelection.forEach(key => {
+                    const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
                     if (!existingObstacle) {
-                        let found = false;
-                        for (let obstacle of obstacles) {
-                            if (obstacle.type === selectedObstacleType) {
-                                obstacle.cells.push(key);
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            obstacles.push({
-                                id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
-                                type: selectedObstacleType,
-                                cells: [key]
-                            });
-                        }
+                        newCells.push(key);
                     }
-                } else {
+                });
+
+                // 新しいセルがあれば、新しい障害物オブジェクトを作成
+                if (newCells.length > 0) {
+                    obstacles.push({
+                        id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                        type: selectedObstacleType,
+                        cells: newCells
+                    });
+                }
+            } else {
+                // 削除モード：既存の障害物からセルを削除
+                tempSelection.forEach(key => {
+                    const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
                     if (existingObstacle) {
                         existingObstacle.cells = existingObstacle.cells.filter(c => c !== key);
                     }
-                }
-            });
+                });
+            }
             
             obstacles = obstacles.filter(o => o.cells.length > 0);
 
