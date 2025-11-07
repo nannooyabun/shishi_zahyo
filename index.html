@@ -1813,22 +1813,31 @@
 
         // キーダウン（スペースキー検出）
         function handleKeyDown(e) {
-            if (e.code === 'Space' && !isSpaceKeyPressed) {
-                isSpaceKeyPressed = true;
-                // 入力欄にフォーカスがある場合はスペースキーを無視
-                if (document.activeElement.tagName === 'INPUT' ||
-                    document.activeElement.tagName === 'TEXTAREA') {
-                    isSpaceKeyPressed = false;
+            if (e.code === 'Space') {
+                // 入力欄やボタンにフォーカスがある場合はスペースキーを無視
+                const activeTag = document.activeElement.tagName;
+                if (activeTag === 'INPUT' ||
+                    activeTag === 'TEXTAREA' ||
+                    activeTag === 'BUTTON' ||
+                    activeTag === 'SELECT' ||
+                    activeTag === 'A') {
                     return;
                 }
+
+                // スペースキーのデフォルト動作（ページスクロール）を防ぐ
                 e.preventDefault();
-                canvas.style.cursor = 'grab';
+
+                if (!isSpaceKeyPressed) {
+                    isSpaceKeyPressed = true;
+                    canvas.style.cursor = 'grab';
+                }
             }
         }
 
         // キーアップ（スペースキー解除）
         function handleKeyUp(e) {
             if (e.code === 'Space') {
+                e.preventDefault();
                 isSpaceKeyPressed = false;
                 isPanning = false;
                 lastPanPos = null;
