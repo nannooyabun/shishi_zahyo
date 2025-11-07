@@ -966,6 +966,8 @@
                 <!-- 座標入力 -->
                 <div class="section coord-input-section">
                     <h2>📝 座標入力</h2>
+                    <label>グループ名(任意・空欄可):</label>
+                    <input type="text" id="coordInputGroupName" placeholder="グループ名を指定すると自動作成されます" style="width: 100%; margin-bottom: 8px; padding: 8px;">
                     <label>区切り文字(任意・空欄可):</label>
                     <input type="text" id="customDelimiter" placeholder="例: | または : など" style="width: 100%; margin-bottom: 8px;">
                     <textarea id="coordInput" placeholder="座標を入力してください&#10;例:&#10;城A @320 850&#10;城B @350 870&#10;&#10;または連続入力:&#10;京田楓花: @385 767、綾瀬: 該当なし綾瀬はるか1@354 875"></textarea>
@@ -2291,6 +2293,7 @@
             parsedCoordinates = [];
             document.getElementById('parseResultSection').style.display = 'none';
             document.getElementById('coordInput').value = '';
+            document.getElementById('coordInputGroupName').value = '';
         }
         
         // 座標を保存
@@ -2299,6 +2302,9 @@
                 alert('解析結果がありません');
                 return;
             }
+
+            // グループ名を取得
+            const groupName = document.getElementById('coordInputGroupName').value.trim();
 
             // ステップ1: 入力データ内での重複チェック
             const inputDuplicates = [];
@@ -2356,13 +2362,13 @@
                 );
 
                 if (saveAll) {
-                    saveCoordsToDatabase(parsedCoordinates, duplicates);
+                    saveCoordsToDatabase(parsedCoordinates, duplicates, groupName);
                     clearParseResult();
                 } else {
                     const saveNonDuplicates = confirm('重複データ以外の保存を行いますか?');
 
                     if (saveNonDuplicates) {
-                        saveCoordsToDatabase(nonDuplicates, []);
+                        saveCoordsToDatabase(nonDuplicates, [], groupName);
 
                         parsedCoordinates = duplicates;
                         displayParseResult();
@@ -2371,15 +2377,32 @@
                     }
                 }
             } else {
-                saveCoordsToDatabase(parsedCoordinates, []);
+                saveCoordsToDatabase(parsedCoordinates, [], groupName);
                 clearParseResult();
             }
         }
         
         // 座標をデータベースに保存する内部関数
-        function saveCoordsToDatabase(coords, duplicates) {
+        function saveCoordsToDatabase(coords, duplicates, groupName = null) {
+            // グループ名が指定されている場合、そのグループを作成または取得
+            let targetGroup = null;
+            if (groupName && groupName.trim()) {
+                targetGroup = coordinateGroups.find(g => g.name === groupName.trim());
+                if (!targetGroup) {
+                    // グループが存在しない場合、新規作成
+                    targetGroup = {
+                        id: Date.now().toString(),
+                        name: groupName.trim(),
+                        coordinateIds: []
+                    };
+                    coordinateGroups.push(targetGroup);
+                }
+            }
+
+            // デフォルトグループ
             const defaultGroup = coordinateGroups.find(g => g.id === 'default');
-            
+
+            const newCoordIds = [];
             coords.forEach(coord => {
                 const newCoord = {
                     id: Date.now() + Math.random(),
@@ -2389,25 +2412,36 @@
                     createdAt: new Date().toISOString()
                 };
                 savedCoordinates.push(newCoord);
-                
+                newCoordIds.push(newCoord.id);
+
+                // デフォルトグループに追加
                 if (defaultGroup) {
                     defaultGroup.coordinateIds.push(newCoord.id);
                 }
-                
+
+                // 指定されたグループにも追加
+                if (targetGroup) {
+                    targetGroup.coordinateIds.push(newCoord.id);
+                }
+
                 const isDuplicate = duplicates.some(d => d.x === coord.x && d.y === coord.y);
                 if (isDuplicate) {
                     hiddenCoordinateIds.add(newCoord.id);
                     duplicateCoordinateIds.add(newCoord.id);
                 }
             });
-            
+
             updateCoordinatesList();
             updateGroupsList();
             updateStats();
             drawMap();
-            
+
             if (coords.length > 0) {
-                alert(`${coords.length}件の座標を保存しました`);
+                let message = `${coords.length}件の座標を保存しました`;
+                if (targetGroup) {
+                    message += `\nグループ「${targetGroup.name}」に追加しました`;
+                }
+                alert(message);
             }
         }
         
