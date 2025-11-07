@@ -3398,14 +3398,19 @@
         
         // 修正2: 全画面表示の切り替え - リサイズ処理の改善
         function toggleFullscreen() {
-            const section = document.querySelector('.top-panel > .section');
+            const section = document.querySelector('.map-section');
             const btn = document.getElementById('fullscreenBtn');
-            
+
+            if (!section) {
+                alert('マップセクションが見つかりません');
+                return;
+            }
+
             if (!document.fullscreenElement) {
                 section.requestFullscreen().then(() => {
                     section.classList.add('fullscreen-container');
                     btn.textContent = '✕ 全画面解除';
-                    
+
                     // 修正2: 全画面表示時のリサイズを強制実行
                     setTimeout(() => {
                         resizeCanvas();
@@ -3418,7 +3423,7 @@
                 document.exitFullscreen().then(() => {
                     section.classList.remove('fullscreen-container');
                     btn.textContent = '🖼️ 全画面表示';
-                    
+
                     // 修正2: 全画面解除時のリサイズを強制実行
                     setTimeout(() => {
                         resizeCanvas();
@@ -3427,12 +3432,12 @@
                 });
             }
         }
-        
+
         // 全画面表示の変更を監視
         document.addEventListener('fullscreenchange', () => {
-            const section = document.querySelector('.top-panel > .section');
+            const section = document.querySelector('.map-section');
             const btn = document.getElementById('fullscreenBtn');
-            if (!document.fullscreenElement) {
+            if (!document.fullscreenElement && section) {
                 section.classList.remove('fullscreen-container');
                 btn.textContent = '🖼️ 全画面表示';
                 resizeCanvas();
