@@ -2299,12 +2299,47 @@
                 alert('解析結果がありません');
                 return;
             }
-            
+
+            // ステップ1: 入力データ内での重複チェック
+            const inputDuplicates = [];
+            const inputUnique = [];
+            const seenCoords = new Map(); // キー: "x,y", 値: 最初のインデックス
+
+            parsedCoordinates.forEach((coord, index) => {
+                const key = `${coord.x},${coord.y}`;
+                if (seenCoords.has(key)) {
+                    inputDuplicates.push(coord);
+                } else {
+                    seenCoords.set(key, index);
+                    inputUnique.push(coord);
+                }
+            });
+
+            // 入力データ内に重複がある場合の確認
+            if (inputDuplicates.length > 0) {
+                const saveInputDuplicates = confirm(
+                    `入力データ内に重複座標が${inputDuplicates.length}件あります。\n` +
+                    `${parsedCoordinates.length}件中${inputUnique.length}件がユニークな座標です。\n\n` +
+                    `重複データも含めて保存しますか?\n` +
+                    `(重複データは、マップには表示せずに保存されます)\n\n` +
+                    `「OK」: 重複データも保存\n` +
+                    `「キャンセル」: 重複データを除いて保存`
+                );
+
+                if (!saveInputDuplicates) {
+                    // 重複を除いたデータで続行
+                    parsedCoordinates = inputUnique;
+                    displayParseResult();
+                    alert(`重複データを除いた${inputUnique.length}件で処理を続けます`);
+                }
+            }
+
+            // ステップ2: 既存の保存済み座標との重複チェック
             const duplicates = [];
             const nonDuplicates = [];
-            
+
             parsedCoordinates.forEach(coord => {
-                const isDuplicate = savedCoordinates.some(saved => 
+                const isDuplicate = savedCoordinates.some(saved =>
                     saved.x === coord.x && saved.y === coord.y
                 );
                 if (isDuplicate) {
@@ -2313,25 +2348,25 @@
                     nonDuplicates.push(coord);
                 }
             });
-            
+
             if (duplicates.length > 0) {
                 const saveAll = confirm(
-                    `重複データが${duplicates.length}件ありますが、登録を行いますか?\n` +
+                    `既存データとの重複が${duplicates.length}件ありますが、登録を行いますか?\n` +
                     `(重複データは、マップには表示せずに保存されます)`
                 );
-                
+
                 if (saveAll) {
                     saveCoordsToDatabase(parsedCoordinates, duplicates);
                     clearParseResult();
                 } else {
                     const saveNonDuplicates = confirm('重複データ以外の保存を行いますか?');
-                    
+
                     if (saveNonDuplicates) {
                         saveCoordsToDatabase(nonDuplicates, []);
-                        
+
                         parsedCoordinates = duplicates;
                         displayParseResult();
-                        
+
                         alert(`${nonDuplicates.length}件/${parsedCoordinates.length + nonDuplicates.length}件のデータを保存しました`);
                     }
                 }
