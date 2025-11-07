@@ -1196,6 +1196,7 @@
                         <div class="toggle-switch">
                             <span>一括選択モード</span>
                             <input type="checkbox" id="rangeSelectMode" onchange="toggleRangeSelectMode()">
+                            <span style="font-size: 12px; color: #666; margin-left: 8px;">（ON時: 範囲選択が可能）</span>
                         </div>
 
                         <!-- フィルタ表示エリア -->
@@ -1203,9 +1204,8 @@
 
                         <div id="coordinateList" style="max-height: 300px; overflow-y: auto;"></div>
                         <div class="map-controls" style="margin-top: 12px;">
-                            <button onclick="hideSelectedCoordinates()" class="secondary">👁️ 選択済みを非表示</button>
+                            <button onclick="showSelectedCoordinatesOnly()" class="secondary">👁️ 選択済み座標のみ表示</button>
                             <button onclick="showAllCoordinates()" class="secondary">👁️ すべて表示</button>
-                            <button onclick="toggleDuplicateCoordinates()" class="secondary" id="toggleDuplicateBtn">👁️ 重複座標を非表示</button>
                             <button onclick="deleteSelectedCoordinates()" style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️ 選択削除</button>
                             <button onclick="exportData()" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">💾 データ出力</button>
                         </div>
@@ -1920,15 +1920,19 @@
         function handleTouchStart(e) {
             e.preventDefault();
             touches = Array.from(e.touches);
-            
+
             if (touches.length === 1) {
                 const touch = touches[0];
                 const rect = canvas.getBoundingClientRect();
                 const x = touch.clientX - rect.left;
                 const y = touch.clientY - rect.top;
                 const worldPos = screenToWorld(x, y);
-                
-                if (currentMode === 'input') {
+
+                // 閲覧モードでは1本指でパン可能
+                if (currentMode === 'view') {
+                    lastPanPos = { x: touch.clientX, y: touch.clientY };
+                    isPanning = true;
+                } else if (currentMode === 'input') {
                     if (selectedObstacleType) {
                         const customObstacle = customObstacles.find(o => o.id === selectedObstacleType);
                         if (customObstacle && selectedObstacleType !== 'temp_custom') {
@@ -2007,23 +2011,40 @@
                 
                 drawMap();
             } else if (touches.length === 1) {
-                if ((currentMode === 'input' || currentMode === 'delete') && isDragging && dragStartCell) {
-                    const touch = touches[0];
+                const touch = touches[0];
+
+                // 閲覧モードでの1本指パン
+                if (currentMode === 'view' && isPanning && lastPanPos) {
+                    const panDx = touch.clientX - lastPanPos.x;
+                    const panDy = touch.clientY - lastPanPos.y;
+
+                    if (gridType === 'diamond') {
+                        const screenDelta = { x: panDx, y: panDy };
+                        const worldDelta = screenToWorldDelta(screenDelta);
+                        offsetX -= worldDelta.x;
+                        offsetY -= worldDelta.y;
+                    } else {
+                        offsetX -= panDy / scale;
+                        offsetY -= panDx / scale;
+                    }
+
+                    lastPanPos = { x: touch.clientX, y: touch.clientY };
+                    drawMap();
+                } else if ((currentMode === 'input' || currentMode === 'delete') && isDragging && dragStartCell) {
                     const rect = canvas.getBoundingClientRect();
                     const x = touch.clientX - rect.left;
                     const y = touch.clientY - rect.top;
                     const worldPos = screenToWorld(x, y);
-                    
+
                     dragCurrentCell = worldPos;
                     updateDragSelection();
                     drawMap();
                 } else if (currentMode === 'adjust' && draggedCoordinate) {
-                    const touch = touches[0];
                     const rect = canvas.getBoundingClientRect();
                     const x = touch.clientX - rect.left;
                     const y = touch.clientY - rect.top;
                     const worldPos = screenToWorld(x, y);
-                    
+
                     draggedCoordinate.x = worldPos.x;
                     draggedCoordinate.y = worldPos.y;
                     drawMap();
@@ -2324,14 +2345,14 @@
         
         // 城の描画
         function drawCastle(castle) {
-            const { x, y } = castle;
-            
+            const { x, y, name } = castle;
+
             for (let dx = -4; dx <= 4; dx++) {
                 for (let dy = -4; dy <= 4; dy++) {
                     drawCell(x + dx, y + dy, 'rgba(128, 0, 128, 0.6)');
                 }
             }
-            
+
             for (let dx = -8; dx <= 8; dx++) {
                 for (let dy = -8; dy <= 8; dy++) {
                     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
@@ -2339,6 +2360,23 @@
                     }
                 }
             }
+
+            // 城の名前を表示
+            const screenPos = worldToScreen(x, y);
+            ctx.save();
+            ctx.font = `bold ${Math.max(12, scale * 2)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // 背景（白い影）を描画して読みやすくする
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.strokeText(name, screenPos.x, screenPos.y);
+
+            // テキストを描画
+            ctx.fillStyle = '#800080';
+            ctx.fillText(name, screenPos.x, screenPos.y);
+            ctx.restore();
         }
         
         // 居住範囲の描画
@@ -2627,6 +2665,20 @@
             // デフォルトグループ
             const defaultGroup = coordinateGroups.find(g => g.id === 'default');
 
+            // 重複座標グループを取得または作成
+            let duplicateGroup = null;
+            if (duplicates.length > 0) {
+                duplicateGroup = coordinateGroups.find(g => g.name === '重複座標');
+                if (!duplicateGroup) {
+                    duplicateGroup = {
+                        id: 'duplicate-group-' + Date.now().toString(),
+                        name: '重複座標',
+                        coordinateIds: []
+                    };
+                    coordinateGroups.push(duplicateGroup);
+                }
+            }
+
             const newCoordIds = [];
             coords.forEach(coord => {
                 const newCoord = {
@@ -2653,6 +2705,10 @@
                 if (isDuplicate) {
                     hiddenCoordinateIds.add(newCoord.id);
                     duplicateCoordinateIds.add(newCoord.id);
+                    // 重複座標グループに追加
+                    if (duplicateGroup) {
+                        duplicateGroup.coordinateIds.push(newCoord.id);
+                    }
                 }
             });
 
@@ -3072,31 +3128,32 @@
             drawMap();
         }
         
-        // すべての座標を表示
-        function showAllCoordinates() {
-            hiddenCoordinateIds.clear();
+        // 選択済み座標のみ表示
+        function showSelectedCoordinatesOnly() {
+            if (selectedCoordinateIds.size === 0) {
+                alert('座標を選択してください');
+                return;
+            }
+
+            // すべての座標を非表示にする
+            savedCoordinates.forEach(coord => {
+                if (!selectedCoordinateIds.has(coord.id)) {
+                    hiddenCoordinateIds.add(coord.id);
+                }
+            });
+
+            // 選択済み座標は表示する
+            selectedCoordinateIds.forEach(id => {
+                hiddenCoordinateIds.delete(id);
+            });
+
             updateCoordinatesList();
             drawMap();
         }
-        
-        // 重複座標の表示切り替え
-        function toggleDuplicateCoordinates() {
-            const btn = document.getElementById('toggleDuplicateBtn');
-            
-            const allDuplicatesHidden = Array.from(duplicateCoordinateIds).every(id => hiddenCoordinateIds.has(id));
-            
-            if (allDuplicatesHidden) {
-                duplicateCoordinateIds.forEach(id => {
-                    hiddenCoordinateIds.delete(id);
-                });
-                btn.textContent = '👁️ 重複座標を非表示';
-            } else {
-                duplicateCoordinateIds.forEach(id => {
-                    hiddenCoordinateIds.add(id);
-                });
-                btn.textContent = '👁️ 重複座標を表示';
-            }
-            
+
+        // すべての座標を表示
+        function showAllCoordinates() {
+            hiddenCoordinateIds.clear();
             updateCoordinatesList();
             drawMap();
         }
@@ -3617,11 +3674,58 @@
         
         // データ出力
         function exportData() {
+            // 選択座標の数を確認
+            const selectedCount = selectedCoordinateIds.size;
+
+            if (selectedCount === 0) {
+                // 選択座標がない場合
+                const exportAll = confirm('選択済み座標がありません。全座標を出力しますか？');
+                if (!exportAll) {
+                    return; // 出力しない
+                }
+                // 全座標を出力
+                exportAllData();
+            } else {
+                // 選択座標がある場合
+                const confirmExport = confirm(`選択中の${selectedCount}件のデータを出力しますか？`);
+                if (!confirmExport) {
+                    return; // 出力しない
+                }
+                // 選択座標のみを出力
+                exportSelectedData();
+            }
+        }
+
+        // 選択座標のみを出力
+        function exportSelectedData() {
+            const selectedCoords = savedCoordinates.filter(c => selectedCoordinateIds.has(c.id));
+
+            let text = '=== 選択済み座標データ ===\n';
+            selectedCoords.forEach(coord => {
+                text += `${coord.name}@${coord.x} ${coord.y}\n`;
+            });
+
+            text += '\n=== 選択座標を含むグループ ===\n';
+            coordinateGroups.forEach(group => {
+                const groupSelectedCoords = selectedCoords.filter(c => group.coordinateIds.includes(c.id));
+                if (groupSelectedCoords.length > 0) {
+                    text += `\n[${group.name}]\n`;
+                    groupSelectedCoords.forEach(coord => {
+                        text += `${coord.name}@${coord.x} ${coord.y}\n`;
+                    });
+                }
+            });
+
+            downloadTextFile(text, 'selected_coordinates.txt');
+        }
+
+        // 全座標を出力
+        function exportAllData() {
             let text = '=== 座標データ ===\n';
             savedCoordinates.forEach(coord => {
                 text += `${coord.name}@${coord.x} ${coord.y}\n`;
             });
-            
+
             text += '\n=== グループ ===\n';
             coordinateGroups.forEach(group => {
                 const coords = savedCoordinates.filter(c => group.coordinateIds.includes(c.id));
@@ -3630,7 +3734,7 @@
                     text += `${coord.name}@${coord.x} ${coord.y}\n`;
                 });
             });
-            
+
             text += '\n=== 障害物 ===\n';
             obstacles.forEach((obstacle, index) => {
                 let obstacleName = obstacleNames[obstacle.type] || obstacle.type;
@@ -3640,7 +3744,7 @@
                 }
                 text += `${obstacleName} #${index + 1}: ${obstacle.cells.length}マス\n`;
             });
-            
+
             downloadTextFile(text, 'map_data.txt');
         }
         
