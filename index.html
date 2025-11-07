@@ -50,10 +50,40 @@
             }
         }
         .main-content {
+            display: grid;
+            grid-template-columns: 30% 70%;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        /* 修正7: セクションの表示順序制御 */
+        .left-column {
             display: flex;
             flex-direction: column;
             gap: 20px;
-            padding: 20px;
+        }
+        
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .map-section { order: 1; }
+        .coord-input-section { order: 2; }
+        .group-and-coords-section { order: 3; }
+        
+        .obstacle-section { order: 1; }
+        .stats-section { order: 2; }
+        
+        /* スマホでの表示順序 */
+        @media (max-width: 768px) {
+            .map-section { order: 1; }
+            .obstacle-section { order: 2; }
+            .coord-input-section { order: 3; }
+            .group-section { order: 4; }
+            .saved-coords-section { order: 5; }
+            .stats-section { order: 6; }
         }
         .top-panel {
             width: 100%;
@@ -65,6 +95,8 @@
         }
         @media (max-width: 768px) {
             .main-content {
+                display: flex;
+                flex-direction: column;
                 padding: 10px;
             }
             .bottom-panel {
@@ -559,9 +591,12 @@
             background-color: #e3f2fd;
         }
         .group-header {
-            display: flex;
-            align-items: center;
+            display: block;
             width: 100%;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 6px;
+            margin-bottom: 8px;
         }
         .group-expand-icon {
             margin-right: 8px;
@@ -582,11 +617,14 @@
         }
         .group-coord-item {
             background: #f8f9fa;
-            padding: 8px;
+            padding: 10px 12px;
             margin: 4px 0;
             border-radius: 4px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            font-size: 14px;
+            color: #667eea;
+            text-decoration: none;
         }
         .group-coord-item:hover {
             background-color: #e9ecef;
@@ -596,6 +634,201 @@
             padding: 20px;
             color: #999;
             font-style: italic;
+        }
+        
+        /* フローティングボタン - ドロップダウンメニュー */
+        .mode-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .mode-dropdown-btn {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            user-select: none;
+        }
+        
+        .mode-dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: white;
+            min-width: 160px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            z-index: 101;
+            overflow: hidden;
+        }
+        
+        .mode-dropdown-content.show {
+            display: block;
+        }
+        
+        .mode-dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .mode-dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .mode-dropdown-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .mode-dropdown-item.active {
+            background-color: #e3f2fd;
+            font-weight: bold;
+        }
+        
+        /* ズームボタン縦並び */
+        .zoom-controls {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .zoom-controls button {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            margin: 0;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-size: 20px;
+        }
+        
+        .zoom-controls button:hover {
+            transform: scale(1.1);
+        }
+        
+        /* フィルタ表示エリア */
+        .active-filters-display {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .active-filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #856404;
+        }
+        
+        .filter-count {
+            font-size: 13px;
+            color: #856404;
+        }
+        
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            border: 1px solid #ffc107;
+        }
+        
+        .filter-tag button {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            width: auto;
+            margin: 0;
+            min-height: auto;
+            line-height: 1;
+        }
+        
+        .filter-tag button:hover {
+            transform: scale(1.2);
+            box-shadow: none;
+        }
+        
+        .clear-all-filters-btn {
+            background: #dc3545 !important;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            margin: 0;
+            width: auto;
+            min-height: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .filter-tag {
+                font-size: 12px;
+                padding: 5px 10px;
+            }
+            
+            .zoom-controls {
+                right: 10px;
+            }
+            
+            .zoom-controls button {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+
+        /* グループ管理と保存済み座標の横並び */
+        .bottom-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .bottom-split {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -625,12 +858,20 @@
                         </label>
                     </div>
                     
-                    <!-- 表示モード切替 -->
+                    <!-- モード切替（ドロップダウン） -->
                     <div class="mode-toggle">
-                        <button class="mode-btn active" onclick="changeMode('view')">👀 閲覧</button>
-                        <button class="mode-btn" onclick="changeMode('input')">✏️ 入力</button>
-                        <button class="mode-btn" onclick="changeMode('adjust')">🔧 座標調整</button>
-                        <button class="mode-btn" onclick="changeMode('delete')">🗑️ 削除</button>
+                        <div class="mode-dropdown">
+                            <div class="mode-dropdown-btn" onclick="toggleModeDropdown()">
+                                <span id="currentModeText">👀 閲覧</span>
+                                <span>▼</span>
+                            </div>
+                            <div class="mode-dropdown-content" id="modeDropdownContent">
+                                <div class="mode-dropdown-item active" onclick="selectMode('view', '👀 閲覧')">👀 閲覧</div>
+                                <div class="mode-dropdown-item" onclick="selectMode('input', '✏️ 入力')">✏️ 入力</div>
+                                <div class="mode-dropdown-item" onclick="selectMode('adjust', '🔧 座標調整')">🔧 座標調整</div>
+                                <div class="mode-dropdown-item" onclick="selectMode('delete', '🗑️ 削除')">🗑️ 削除</div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- 座標調整モードパネル -->
@@ -643,17 +884,22 @@
                     
                     <canvas id="mapCanvas"></canvas>
                     
+                    <!-- ズームボタン（縦並び・右側中央） -->
+                    <div class="zoom-controls">
+                        <button onclick="zoomIn()" title="拡大">🔍</button>
+                        <button onclick="zoomOut()" title="縮小">🔎</button>
+                        <button onclick="jumpToPrimeZone()" title="一級地帯へ" style="background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);">🏠</button>
+                    </div>
+                    
+                    <!-- 下部コントロール -->
                     <div class="map-controls">
-                        <button onclick="zoomIn()">🔍 拡大</button>
-                        <button onclick="zoomOut()">🔎 縮小</button>
-                        <button onclick="jumpToPrimeZone()" style="background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);">🏠 一級地帯へ</button>
                         <button onclick="toggleFullscreen()" id="fullscreenBtn">🖼️ 全画面表示</button>
                         <button onclick="exportData()" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">💾 データ出力</button>
                     </div>
                 </div>
                 
                 <!-- 統計 -->
-                <div class="section">
+                <div class="section stats-section">
                     <h2>📊 統計情報</h2>
                     <div class="stats">
                         <div class="stat-item">
@@ -685,7 +931,7 @@
                 <!-- 左カラム -->
                 <div class="left-column">
                     <!-- 座標入力 -->
-                    <div class="section">
+                    <div class="section coord-input-section">
                         <h2>📝 座標入力</h2>
                         <label>区切り文字(任意・空欄可):</label>
                         <input type="text" id="customDelimiter" placeholder="例: | または : など" style="width: 100%; margin-bottom: 8px;">
@@ -702,7 +948,7 @@
                     </div>
                     
                     <!-- グループ管理 -->
-                    <div class="section">
+                    <div class="section group-section">
                         <h2>📦 グループ管理</h2>
                         <input type="text" id="groupName" placeholder="グループ名" style="width: 100%; padding: 8px; margin-bottom: 8px;">
                         <button onclick="createGroup()">➕ グループを作成</button>
@@ -710,7 +956,7 @@
                     </div>
                     
                     <!-- 障害物管理 -->
-                    <div class="section">
+                    <div class="section obstacle-section">
                         <h2>🚧 障害物管理</h2>
                         <div style="margin-bottom: 12px;">
                             <button onclick="selectObstacleType('rock')" class="obstacle-btn" id="obstacleRock">🪨 岩</button>
@@ -751,7 +997,7 @@
                 <!-- 右カラム -->
                 <div class="right-column">
                     <!-- 座標管理 -->
-                    <div class="section">
+                    <div class="section saved-coords-section">
                         <h2>📋 保存済み座標</h2>
                         
                         <!-- フィルター・ソート -->
@@ -787,6 +1033,9 @@
                             <span>一括選択モード</span>
                             <input type="checkbox" id="rangeSelectMode" onchange="toggleRangeSelectMode()">
                         </div>
+                        
+                        <!-- フィルタ表示エリア -->
+                        <div id="activeFiltersDisplay" class="active-filters-display" style="display: none;"></div>
                         
                         <div id="coordinateList" style="max-height: 300px; overflow-y: auto;"></div>
                         <div class="map-controls" style="margin-top: 12px;">
@@ -855,6 +1104,7 @@
         let isCreatingCustomObstacle = false;
         let customObstacleInProgress = null;
         let rangeSelectMode = false;
+        let isFilterActive = false;
         let rangeSelectStart = null;
         let expandedGroupId = null;
         let groupFilterActive = false;
@@ -1086,7 +1336,69 @@
             resizeCanvas();
         }
         
-        // モード変更
+        // ドロップダウンメニューのトグル
+        function toggleModeDropdown() {
+            const dropdown = document.getElementById('modeDropdownContent');
+            dropdown.classList.toggle('show');
+        }
+        
+        // モード選択
+        function selectMode(mode, text) {
+            // ドロップダウンを閉じる
+            document.getElementById('modeDropdownContent').classList.remove('show');
+            
+            // 現在のモードテキストを更新
+            document.getElementById('currentModeText').textContent = text;
+            
+            // アクティブ状態を更新
+            document.querySelectorAll('.mode-dropdown-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // モードを変更
+            changeModeInternal(mode);
+        }
+        
+        // 内部的にモードを変更（イベントオブジェクトを使わない）
+        function changeModeInternal(mode) {
+            if (mode === 'adjust' && !adjustMode.active) {
+                startAdjustMode();
+                return;
+            }
+            
+            currentMode = mode;
+            tempSelection.clear();
+            draggedCoordinate = null;
+            isDragging = false;
+            dragStartCell = null;
+            
+            if (mode === 'input') {
+                canvas.style.cursor = 'crosshair';
+            } else if (mode === 'adjust') {
+                canvas.style.cursor = 'move';
+            } else if (mode === 'delete') {
+                canvas.style.cursor = 'not-allowed';
+            } else {
+                canvas.style.cursor = 'default';
+            }
+            
+            drawMap();
+        }
+        
+        // ドロップダウン外をクリックしたら閉じる
+        window.onclick = function(event) {
+            if (!event.target.matches('.mode-dropdown-btn') && !event.target.matches('.mode-dropdown-btn *')) {
+                const dropdowns = document.getElementsByClassName('mode-dropdown-content');
+                for (let i = 0; i < dropdowns.length; i++) {
+                    if (dropdowns[i].classList.contains('show')) {
+                        dropdowns[i].classList.remove('show');
+                    }
+                }
+            }
+        }
+        
+        // モード変更（従来のボタン用 - 互換性のため残す）
         function changeMode(mode) {
             if (mode === 'adjust' && !adjustMode.active) {
                 startAdjustMode();
@@ -2070,12 +2382,22 @@
             }
         }
         
-        // 修正3: フィルター適用 - 結果0件の場合の表示改善
+        // 修正3+9: フィルター適用 - isFilterActive対応
         function applyFilters() {
             const nameFilter = document.getElementById('nameFilter').value.toLowerCase();
             const dateFrom = document.getElementById('dateFilterFrom').value;
             const dateTo = document.getElementById('dateFilterTo').value;
             const sortBy = document.getElementById('sortBy').value;
+            
+            // フィルタが適用されているかチェック
+            isFilterActive = !!(nameFilter || dateFrom || dateTo);
+            
+            if (!isFilterActive) {
+                filteredCoordinates = [];
+                updateFilterDisplay();
+                updateCoordinatesList();
+                return;
+            }
             
             filteredCoordinates = savedCoordinates.filter(coord => {
                 if (nameFilter && !coord.name.toLowerCase().includes(nameFilter)) {
@@ -2114,7 +2436,144 @@
                 }
             });
             
+            updateFilterDisplay();
             updateCoordinatesList();
+        }
+        
+
+        // フィルタ表示を更新
+        function updateFilterDisplay() {
+            const container = document.getElementById('activeFiltersDisplay');
+            if (!container) return;
+            
+            const nameFilter = document.getElementById('nameFilter').value;
+            const dateFrom = document.getElementById('dateFilterFrom').value;
+            const dateTo = document.getElementById('dateFilterTo').value;
+            const sortBy = document.getElementById('sortBy').value;
+            
+            // フィルタまたはグループが適用されているかチェック
+            const hasFilters = isFilterActive || groupFilterActive;
+            
+            if (!hasFilters) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            
+            // フィルタ件数を計算
+            let resultCount = 0;
+            if (groupFilterActive && expandedGroupId) {
+                const group = coordinateGroups.find(g => g.id === expandedGroupId);
+                if (group) {
+                    resultCount = savedCoordinates.filter(c => group.coordinateIds.includes(c.id)).length;
+                }
+            } else if (isFilterActive) {
+                resultCount = filteredCoordinates.length;
+            }
+            
+            // ヘッダー部分
+            const headerHTML = `
+                <div class="active-filters-header">
+                    <span>🔍 適用中のフィルタ:</span>
+                    <span class="filter-count">(${resultCount}件該当)</span>
+                </div>
+            `;
+            
+            // タグ部分
+            let tagsHTML = '<div class="filter-tags">';
+            
+            // 名前フィルタ
+            if (nameFilter) {
+                tagsHTML += `
+                    <span class="filter-tag">
+                        🔤 名前: "${nameFilter}"
+                        <button onclick="removeNameFilter()">✕</button>
+                    </span>
+                `;
+            }
+            
+            // 日付フィルタ
+            if (dateFrom || dateTo) {
+                let dateText = '📅 期間: ';
+                if (dateFrom && dateTo) {
+                    dateText += `${dateFrom}～${dateTo}`;
+                } else if (dateFrom) {
+                    dateText += `${dateFrom}～`;
+                } else {
+                    dateText += `～${dateTo}`;
+                }
+                tagsHTML += `
+                    <span class="filter-tag">
+                        ${dateText}
+                        <button onclick="removeDateFilter()">✕</button>
+                    </span>
+                `;
+            }
+            
+            // グループフィルタ
+            if (groupFilterActive && expandedGroupId) {
+                const group = coordinateGroups.find(g => g.id === expandedGroupId);
+                if (group) {
+                    tagsHTML += `
+                        <span class="filter-tag">
+                            📦 グループ: ${group.name}
+                            <button onclick="removeGroupFilter()">✕</button>
+                        </span>
+                    `;
+                }
+            }
+            
+            // ソート順（デフォルト以外の場合のみ表示）
+            if (sortBy !== 'date-desc') {
+                const sortLabels = {
+                    'date-asc': '登録日時(古→新)',
+                    'name-asc': '名前(A→Z)',
+                    'name-desc': '名前(Z→A)',
+                    'x-asc': 'X座標(小→大)',
+                    'x-desc': 'X座標(大→小)',
+                    'y-asc': 'Y座標(小→大)',
+                    'y-desc': 'Y座標(大→小)'
+                };
+                tagsHTML += `
+                    <span class="filter-tag">
+                        ↓ ソート: ${sortLabels[sortBy] || sortBy}
+                    </span>
+                `;
+            }
+            
+            // すべてクリアボタン
+            tagsHTML += `
+                <button class="clear-all-filters-btn" onclick="clearFilters()">
+                    すべてクリア
+                </button>
+            `;
+            
+            tagsHTML += '</div>';
+            
+            container.innerHTML = headerHTML + tagsHTML;
+        }
+        
+        // 名前フィルタを削除
+        function removeNameFilter() {
+            document.getElementById('nameFilter').value = '';
+            applyFilters();
+        }
+        
+        // 日付フィルタを削除
+        function removeDateFilter() {
+            document.getElementById('dateFilterFrom').value = '';
+            document.getElementById('dateFilterTo').value = '';
+            applyFilters();
+        }
+        
+        // グループフィルタを削除
+        function removeGroupFilter() {
+            groupFilterActive = false;
+            expandedGroupId = null;
+            updateFilterDisplay();
+            updateCoordinatesList();
+            updateGroupsList();
         }
         
         // フィルタークリア
@@ -2124,8 +2583,10 @@
             document.getElementById('dateFilterTo').value = '';
             document.getElementById('sortBy').value = 'date-desc';
             filteredCoordinates = [];
+            isFilterActive = false;
             groupFilterActive = false;
             expandedGroupId = null;
+            updateFilterDisplay();
             updateCoordinatesList();
             updateGroupsList();
         }
@@ -2135,21 +2596,28 @@
             const container = document.getElementById('coordinateList');
             container.innerHTML = '';
             
-            // 修正3: フィルター結果またはグループフィルターを優先
+            // フィルタ表示を更新
+            updateFilterDisplay();
+            
+            // 表示する座標を決定
             let displayCoords;
             if (groupFilterActive && expandedGroupId) {
                 const group = coordinateGroups.find(g => g.id === expandedGroupId);
                 if (group) {
                     displayCoords = savedCoordinates.filter(c => group.coordinateIds.includes(c.id));
                 } else {
-                    displayCoords = filteredCoordinates.length > 0 ? filteredCoordinates : savedCoordinates;
+                    displayCoords = savedCoordinates;
                 }
+            } else if (isFilterActive) {
+                // フィルタが適用されている場合は、結果が0件でもfilteredCoordinatesを使用
+                displayCoords = filteredCoordinates;
             } else {
-                displayCoords = filteredCoordinates.length > 0 ? filteredCoordinates : savedCoordinates;
+                // フィルタ未適用の場合は全座標
+                displayCoords = savedCoordinates;
             }
             
-            // 修正3: 検索結果0件の場合のメッセージ表示
-            if (displayCoords.length === 0 && (filteredCoordinates.length > 0 || groupFilterActive)) {
+            // 0件メッセージの表示
+            if (displayCoords.length === 0 && (isFilterActive || groupFilterActive)) {
                 const noResults = document.createElement('div');
                 noResults.className = 'no-results-message';
                 noResults.textContent = '該当する座標がありません';
@@ -2441,33 +2909,36 @@
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'group-header';
                 headerDiv.onclick = () => toggleGroupExpansion(group.id);
-                headerDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; width: 100%;';
                 
                 headerDiv.innerHTML = `
-                    <span style="display: flex; align-items: center; flex: 1;">
-                        <span class="group-expand-icon">▶</span>
-                        <strong>${group.name}</strong> (${group.coordinateIds.length}件)
-                    </span>
-                    <div class="item-actions" onclick="event.stopPropagation();">
-                        <button onclick="selectGroupCoordinates('${group.id}')">選択</button>
-                        <button onclick="addCoordinatesToGroup('${group.id}')" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">➕追加</button>
-                        <button onclick="editGroup('${group.id}')">✏️</button>
-                        <button onclick="deleteGroup('${group.id}')" 
-                                style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span style="display: flex; align-items: center;">
+                            <span class="group-expand-icon">▶</span>
+                            <strong>${group.name}</strong> (${group.coordinateIds.length}件)
+                        </span>
+                        <div class="item-actions" onclick="event.stopPropagation();">
+                            <button onclick="selectGroupCoordinates('${group.id}')">選択</button>
+                            <button onclick="addCoordinatesToGroup('${group.id}')" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">➕追加</button>
+                            <button onclick="editGroup('${group.id}')">✏️</button>
+                            <button onclick="deleteGroup('${group.id}')" 
+                                    style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
+                        </div>
                     </div>
                 `;
                 
                 div.appendChild(headerDiv);
                 
-                // 修正8: 座標リストの展開
+                // 修正8: 座標リストの展開（階層表示）
                 const coordsDiv = document.createElement('div');
                 coordsDiv.className = 'group-coordinates';
                 
                 const groupCoords = savedCoordinates.filter(c => group.coordinateIds.includes(c.id));
-                groupCoords.forEach(coord => {
+                groupCoords.forEach((coord, index) => {
                     const coordItem = document.createElement('div');
                     coordItem.className = 'group-coord-item';
-                    coordItem.textContent = `${coord.name}: @${coord.x} ${coord.y}`;
+                    const isLast = index === groupCoords.length - 1;
+                    const prefix = isLast ? '└' : '├';
+                    coordItem.textContent = `${prefix} ${coord.name}: @${coord.x} ${coord.y}`;
                     coordItem.onclick = () => jumpToCoordinate(coord.id);
                     coordsDiv.appendChild(coordItem);
                 });
