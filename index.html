@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>ゲーム座標管理システム</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -1216,7 +1221,32 @@
     </div>
 
     <script>
+        // ========================================
+        // Firebase 初期化
+        // ========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoN96jdkx9kVm0mfj50n-5WzZOkLzGJVI",
+            authDomain: "shishi-zahyo.firebaseapp.com",
+            databaseURL: "https://shishi-zahyo-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "shishi-zahyo",
+            storageBucket: "shishi-zahyo.firebasestorage.app",
+            messagingSenderId: "380340912647",
+            appId: "1:380340912647:web:d20e62f51ed9dc590560a2",
+            measurementId: "G-NQ0482B0YC"
+        };
+
+        // Firebase初期化
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Firebaseデータ参照
+        const coordinatesRef = database.ref('coordinates');
+        const groupsRef = database.ref('groups');
+        const obstaclesRef = database.ref('obstacles');
+
+        // ========================================
         // グローバル変数
+        // ========================================
         const canvas = document.getElementById('mapCanvas');
         const ctx = canvas.getContext('2d');
         
@@ -1305,8 +1335,116 @@
             '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#AAB7B8',
             '#FF8ED4', '#00D2FF', '#3F51B5', '#E91E63', '#009688'
         ];
-        
+
+        // ========================================
+        // Firebase データ管理関数
+        // ========================================
+
+        // Firebaseからすべてのデータを読み込み（初回ロード）
+        function loadFromFirebase() {
+            console.log('Firebaseからデータを読み込み中...');
+
+            // 座標データの読み込みとリアルタイム同期
+            coordinatesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    savedCoordinates = Object.keys(data).map(key => ({
+                        ...data[key],
+                        id: data[key].id || key
+                    }));
+                    console.log(`${savedCoordinates.length}件の座標を読み込みました`);
+                    updateCoordinatesList();
+                    drawMap();
+                    updateStats();
+                } else {
+                    console.log('座標データがありません');
+                }
+            });
+
+            // グループデータの読み込みとリアルタイム同期
+            groupsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    coordinateGroups = Object.keys(data).map(key => ({
+                        ...data[key],
+                        id: data[key].id || key
+                    }));
+                    console.log(`${coordinateGroups.length}件のグループを読み込みました`);
+
+                    // デフォルトグループがない場合は作成
+                    if (!coordinateGroups.find(g => g.id === 'default')) {
+                        createDefaultGroup();
+                    }
+
+                    updateGroupsList();
+                } else {
+                    console.log('グループデータがありません');
+                    createDefaultGroup();
+                }
+            });
+
+            // 障害物データの読み込みとリアルタイム同期
+            obstaclesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const obstacleData = data.obstacles || [];
+                    const customObstacleData = data.customObstacles || [];
+
+                    obstacles = obstacleData;
+                    customObstacles = customObstacleData;
+
+                    console.log(`${obstacles.length}件の障害物を読み込みました`);
+                    updateObstaclesList();
+                    updateCustomObstaclesList();
+                    drawMap();
+                } else {
+                    console.log('障害物データがありません');
+                }
+            });
+        }
+
+        // 座標をFirebaseに保存
+        function saveCoordinateToFirebase(coordinate) {
+            const coordId = coordinate.id.toString();
+            return coordinatesRef.child(coordId).set(coordinate);
+        }
+
+        // 座標をFirebaseから削除
+        function deleteCoordinateFromFirebase(coordId) {
+            return coordinatesRef.child(coordId.toString()).remove();
+        }
+
+        // グループをFirebaseに保存
+        function saveGroupToFirebase(group) {
+            const groupId = group.id.toString();
+            return groupsRef.child(groupId).set(group);
+        }
+
+        // グループをFirebaseから削除
+        function deleteGroupFromFirebase(groupId) {
+            return groupsRef.child(groupId.toString()).remove();
+        }
+
+        // すべてのグループをFirebaseに保存
+        function saveAllGroupsToFirebase() {
+            const groupsData = {};
+            coordinateGroups.forEach(group => {
+                groupsData[group.id] = group;
+            });
+            return groupsRef.set(groupsData);
+        }
+
+        // 障害物をFirebaseに保存
+        function saveObstaclesToFirebase() {
+            return obstaclesRef.set({
+                obstacles: obstacles,
+                customObstacles: customObstacles
+            });
+        }
+
+        // ========================================
         // 初期化
+        // ========================================
         function init() {
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
@@ -1326,12 +1464,15 @@
 
             initColorPicker();
             createDefaultGroup();
-            
+
             // 修正3: ローカルタイムゾーンで日付を設定
             const today = new Date();
             const dateString = getLocalDateString(today);
             document.getElementById('dateFilterTo').value = dateString;
-            
+
+            // Firebaseからデータを読み込み
+            loadFromFirebase();
+
             drawMap();
             updateStats();
         }
@@ -1900,7 +2041,12 @@
             });
             
             obstacles = obstacles.filter(o => o.cells.length > 0);
-            
+
+            // Firebaseに障害物を保存
+            saveObstaclesToFirebase().catch(error => {
+                console.error('障害物の保存エラー:', error);
+            });
+
             tempSelection.clear();
             groupObstacles();
             updateObstaclesList();
@@ -2691,6 +2837,11 @@
                 savedCoordinates.push(newCoord);
                 newCoordIds.push(newCoord.id);
 
+                // Firebaseに座標を保存
+                saveCoordinateToFirebase(newCoord).catch(error => {
+                    console.error('座標の保存エラー:', error);
+                });
+
                 // デフォルトグループに追加
                 if (defaultGroup) {
                     defaultGroup.coordinateIds.push(newCoord.id);
@@ -2710,6 +2861,11 @@
                         duplicateGroup.coordinateIds.push(newCoord.id);
                     }
                 }
+            });
+
+            // グループをFirebaseに保存
+            saveAllGroupsToFirebase().catch(error => {
+                console.error('グループの保存エラー:', error);
             });
 
             updateCoordinatesList();
@@ -3164,19 +3320,28 @@
                 alert('座標を選択してください');
                 return;
             }
-            
+
             if (confirm(`選択された${selectedCoordinateIds.size}件の座標を削除しますか?`)) {
-                savedCoordinates = savedCoordinates.filter(c => !selectedCoordinateIds.has(c.id));
-                
-                coordinateGroups.forEach(group => {
-                    group.coordinateIds = group.coordinateIds.filter(id => !selectedCoordinateIds.has(id));
-                });
-                
+                // Firebaseから削除
                 selectedCoordinateIds.forEach(id => {
+                    deleteCoordinateFromFirebase(id).catch(error => {
+                        console.error('座標の削除エラー:', error);
+                    });
                     duplicateCoordinateIds.delete(id);
                     hiddenCoordinateIds.delete(id);
                 });
-                
+
+                savedCoordinates = savedCoordinates.filter(c => !selectedCoordinateIds.has(c.id));
+
+                coordinateGroups.forEach(group => {
+                    group.coordinateIds = group.coordinateIds.filter(id => !selectedCoordinateIds.has(id));
+                });
+
+                // グループをFirebaseに保存
+                saveAllGroupsToFirebase().catch(error => {
+                    console.error('グループの保存エラー:', error);
+                });
+
                 selectedCoordinateIds.clear();
                 updateCoordinatesList();
                 updateGroupsList();
@@ -3226,17 +3391,22 @@
                 alert('グループ名を入力してください');
                 return;
             }
-            
+
             coordinateGroups.push({
                 id: Date.now().toString(),
                 name: name,
                 coordinateIds: Array.from(selectedCoordinateIds),
                 createdAt: new Date().toISOString()
             });
-            
+
+            // Firebaseに保存
+            saveAllGroupsToFirebase().catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
             document.getElementById('groupName').value = '';
             selectedCoordinateIds.clear();
-            
+
             updateCoordinatesList();
             updateGroupsList();
             updateStats();
@@ -3370,13 +3540,19 @@
                 alert('デフォルトグループは削除できません');
                 return;
             }
-            
+
             if (confirm('このグループを削除しますか?(座標自体は削除されません)')) {
                 coordinateGroups = coordinateGroups.filter(g => g.id !== groupId);
                 if (expandedGroupId === groupId) {
                     expandedGroupId = null;
                     groupFilterActive = false;
                 }
+
+                // Firebaseから削除
+                deleteGroupFromFirebase(groupId).catch(error => {
+                    console.error('グループの削除エラー:', error);
+                });
+
                 updateGroupsList();
                 updateCoordinatesList();
                 updateStats();
@@ -3651,10 +3827,16 @@
                 alert('障害物を選択してください');
                 return;
             }
-            
+
             if (confirm(`選択された${selectedObstacleIds.size}件の障害物を削除しますか?`)) {
                 obstacles = obstacles.filter(o => !selectedObstacleIds.has(o.id));
                 selectedObstacleIds.clear();
+
+                // Firebaseに保存
+                saveObstaclesToFirebase().catch(error => {
+                    console.error('障害物の保存エラー:', error);
+                });
+
                 updateObstaclesList();
                 updateStats();
                 drawMap();
