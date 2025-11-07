@@ -111,6 +111,75 @@
             margin-bottom: 12px;
             color: #333;
         }
+        /* 操作ガイドスタイル */
+        .guide-section {
+            background: #f8f9fa;
+        }
+        .guide-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            padding: 0;
+            overflow: hidden;
+        }
+        .guide-item summary {
+            cursor: pointer;
+            padding: 12px 15px;
+            font-weight: bold;
+            color: #667eea;
+            user-select: none;
+            list-style: none;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transition: all 0.2s;
+        }
+        .guide-item summary::-webkit-details-marker {
+            display: none;
+        }
+        .guide-item summary:hover {
+            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+        }
+        .guide-item summary::before {
+            content: '▶';
+            display: inline-block;
+            margin-right: 8px;
+            transition: transform 0.2s;
+        }
+        .guide-item[open] summary::before {
+            transform: rotate(90deg);
+        }
+        .guide-content {
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+            line-height: 1.6;
+        }
+        .guide-content p {
+            margin-bottom: 10px;
+        }
+        .guide-content ul, .guide-content ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+        .guide-content li {
+            margin-bottom: 5px;
+        }
+        .guide-content code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #d63384;
+        }
+        .guide-content strong {
+            color: #495057;
+        }
+        @media (max-width: 768px) {
+            .guide-content {
+                padding: 12px;
+                font-size: 14px;
+            }
+        }
         /* 全画面表示スタイル */
         .fullscreen-container {
             width: 100vw !important;
@@ -907,6 +976,102 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 操作ガイド -->
+                <div class="section guide-section">
+                    <h2>📖 操作ガイド</h2>
+
+                    <!-- 基本操作 -->
+                    <details class="guide-item">
+                        <summary>🖱️ マップ操作</summary>
+                        <div class="guide-content">
+                            <p><strong>🔍 拡大縮小:</strong> マウスホイール</p>
+                            <p><strong>✋ パン（スクロール）:</strong></p>
+                            <ul>
+                                <li>閲覧モード: マウスドラッグ</li>
+                                <li>入力・削除・調整モード: スペースキー+ドラッグ</li>
+                                <li>スマホ: 二本指でスライド</li>
+                            </ul>
+                            <p><strong>🏠 一級地帯へジャンプ:</strong> マップ右側の🏠ボタン</p>
+                            <p><strong>🖼️ 全画面表示:</strong> マップ下部の全画面表示ボタン</p>
+                        </div>
+                    </details>
+
+                    <!-- 座標入力 -->
+                    <details class="guide-item">
+                        <summary>📝 座標入力</summary>
+                        <div class="guide-content">
+                            <p><strong>入力形式:</strong></p>
+                            <ul>
+                                <li>基本: <code>名前 @X座標 Y座標</code></li>
+                                <li>例: <code>城A @320 850</code></li>
+                                <li>連続入力: 改行、カンマ、または任意の区切り文字で区切る</li>
+                            </ul>
+                            <p><strong>グループ作成:</strong> グループ名を入力すると自動的にグループが作成されます</p>
+                            <p><strong>手順:</strong></p>
+                            <ol>
+                                <li>座標入力欄にデータを入力</li>
+                                <li>「📥 座標を解析」ボタンをクリック</li>
+                                <li>解析結果を確認・修正</li>
+                                <li>「💾 座標を保存」ボタンで保存</li>
+                            </ol>
+                        </div>
+                    </details>
+
+                    <!-- 障害物入力 -->
+                    <details class="guide-item">
+                        <summary>🚧 障害物入力</summary>
+                        <div class="guide-content">
+                            <p><strong>事前準備:</strong></p>
+                            <ol>
+                                <li>障害物管理パネルで障害物を選択</li>
+                                <li>マップ上部で「✏️ 入力」モードを選択</li>
+                            </ol>
+                            <p><strong>入力方法:</strong></p>
+                            <ul>
+                                <li><strong>単一セル:</strong> マップ上をクリック</li>
+                                <li><strong>複数セル:</strong> ドラッグして範囲選択</li>
+                                <li><strong>スクロール:</strong> スペースキー+ドラッグ</li>
+                            </ul>
+                            <p><strong>カスタム障害物:</strong> 「➕ カスタム障害物を作成」から色や名前を自由に設定可能</p>
+                            <p><strong>削除:</strong> 「🗑️ 削除」モードで障害物をクリックまたはドラッグ</p>
+                        </div>
+                    </details>
+
+                    <!-- グループ管理 -->
+                    <details class="guide-item">
+                        <summary>📦 グループ管理</summary>
+                        <div class="guide-content">
+                            <p><strong>グループ作成:</strong></p>
+                            <ul>
+                                <li>グループ名を入力して「➕ グループを作成」</li>
+                                <li>または座標入力時にグループ名を指定</li>
+                            </ul>
+                            <p><strong>座標の追加:</strong></p>
+                            <ol>
+                                <li>保存済み座標リストで座標を選択</li>
+                                <li>グループの「➕追加」ボタンをクリック</li>
+                            </ol>
+                            <p><strong>グループ内の座標を表示:</strong> グループ名をクリックして展開</p>
+                            <p><strong>グループ内の座標を選択:</strong> 「選択」ボタンで一括選択</p>
+                        </div>
+                    </details>
+
+                    <!-- 座標調整 -->
+                    <details class="guide-item">
+                        <summary>🔧 座標調整</summary>
+                        <div class="guide-content">
+                            <p><strong>手順:</strong></p>
+                            <ol>
+                                <li>マップ上部で「🔧 座標調整」モードを選択</li>
+                                <li>調整したい座標をドラッグ</li>
+                                <li>グループ名を入力</li>
+                                <li>「💾 調整座標を保存」で新しいグループとして保存</li>
+                            </ol>
+                            <p><strong>注意:</strong> 元の座標は変更されず、調整後の座標が新規グループとして保存されます</p>
+                        </div>
+                    </details>
+                </div>
             </div>
 
             <!-- 右カラム -->
@@ -1132,7 +1297,8 @@
         let lastTouchDistance = 0;
         let isPanning = false;
         let lastPanPos = null;
-        
+        let isSpaceKeyPressed = false; // スペースキー押下状態
+
         // カスタム障害物用の色パレット
         const colorPalette = [
             '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
@@ -1153,7 +1319,11 @@
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-            
+
+            // スペースキーでのパン操作
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+
             initColorPicker();
             createDefaultGroup();
             
@@ -1504,7 +1674,15 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             const worldPos = screenToWorld(x, y);
-            
+
+            // スペースキーが押されている場合はパン操作を優先
+            if (isSpaceKeyPressed) {
+                isPanning = true;
+                lastPanPos = { x: e.clientX, y: e.clientY };
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
             if (currentMode === 'view') {
                 // 修正5: ひし形モードでのパン操作
                 isPanning = true;
@@ -1541,7 +1719,8 @@
         
         // マウスムーブ
         function handleMouseMove(e) {
-            if (currentMode === 'view' && isPanning && lastPanPos) {
+            // スペースキー押下中またはビューモードでのパン操作
+            if (isPanning && lastPanPos) {
                 // 修正5: ひし形モードでも画面座標系でパン操作
                 const dx = e.clientX - lastPanPos.x;
                 const dy = e.clientY - lastPanPos.y;
@@ -1601,6 +1780,14 @@
         
         // マウスアップ
         function handleMouseUp(e) {
+            // スペースキー押下中のパン操作終了
+            if (isSpaceKeyPressed && isPanning) {
+                isPanning = false;
+                lastPanPos = null;
+                canvas.style.cursor = 'grab';
+                return;
+            }
+
             if (currentMode === 'view') {
                 isPanning = false;
                 lastPanPos = null;
@@ -1623,7 +1810,32 @@
                 drawMap();
             }
         }
-        
+
+        // キーダウン（スペースキー検出）
+        function handleKeyDown(e) {
+            if (e.code === 'Space' && !isSpaceKeyPressed) {
+                isSpaceKeyPressed = true;
+                // 入力欄にフォーカスがある場合はスペースキーを無視
+                if (document.activeElement.tagName === 'INPUT' ||
+                    document.activeElement.tagName === 'TEXTAREA') {
+                    isSpaceKeyPressed = false;
+                    return;
+                }
+                e.preventDefault();
+                canvas.style.cursor = 'grab';
+            }
+        }
+
+        // キーアップ（スペースキー解除）
+        function handleKeyUp(e) {
+            if (e.code === 'Space') {
+                isSpaceKeyPressed = false;
+                isPanning = false;
+                lastPanPos = null;
+                canvas.style.cursor = 'default';
+            }
+        }
+
         // ドラッグ選択の更新
         function updateDragSelection() {
             if (!dragStartCell || !dragCurrentCell) return;
