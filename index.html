@@ -569,20 +569,27 @@
         .group-item {
             cursor: pointer;
             transition: background-color 0.2s;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 10px;
+            background: white;
         }
         .group-item:hover {
-            background-color: #f5f5f5;
+            border-color: #667eea;
         }
         .group-item.expanded {
-            background-color: #e3f2fd;
+            background-color: #f9fbff;
+            border-color: #667eea;
         }
         .group-header {
-            display: block;
+            display: flex;
+            flex-direction: column;
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: #e3f2fd;
             border-radius: 6px;
-            margin-bottom: 8px;
+            margin-bottom: 0;
         }
         .group-expand-icon {
             margin-right: 8px;
@@ -594,26 +601,30 @@
         }
         .group-coordinates {
             display: none;
-            margin-top: 10px;
-            padding-left: 24px;
-            border-left: 3px solid #667eea;
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #f0f7ff;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
         }
         .group-item.expanded .group-coordinates {
             display: block;
         }
         .group-coord-item {
-            background: #f8f9fa;
-            padding: 10px 12px;
-            margin: 4px 0;
+            background: white;
+            padding: 8px 12px;
+            margin: 6px 0;
             border-radius: 4px;
             cursor: pointer;
             transition: all 0.2s;
             font-size: 14px;
             color: #667eea;
             text-decoration: none;
+            border: 1px solid #e3f2fd;
         }
         .group-coord-item:hover {
-            background-color: #e9ecef;
+            background-color: #e3f2fd;
+            border-color: #667eea;
         }
         .no-results-message {
             text-align: center;
@@ -2288,12 +2299,47 @@
                 alert('解析結果がありません');
                 return;
             }
-            
+
+            // ステップ1: 入力データ内での重複チェック
+            const inputDuplicates = [];
+            const inputUnique = [];
+            const seenCoords = new Map(); // キー: "x,y", 値: 最初のインデックス
+
+            parsedCoordinates.forEach((coord, index) => {
+                const key = `${coord.x},${coord.y}`;
+                if (seenCoords.has(key)) {
+                    inputDuplicates.push(coord);
+                } else {
+                    seenCoords.set(key, index);
+                    inputUnique.push(coord);
+                }
+            });
+
+            // 入力データ内に重複がある場合の確認
+            if (inputDuplicates.length > 0) {
+                const saveInputDuplicates = confirm(
+                    `入力データ内に重複座標が${inputDuplicates.length}件あります。\n` +
+                    `${parsedCoordinates.length}件中${inputUnique.length}件がユニークな座標です。\n\n` +
+                    `重複データも含めて保存しますか?\n` +
+                    `(重複データは、マップには表示せずに保存されます)\n\n` +
+                    `「OK」: 重複データも保存\n` +
+                    `「キャンセル」: 重複データを除いて保存`
+                );
+
+                if (!saveInputDuplicates) {
+                    // 重複を除いたデータで続行
+                    parsedCoordinates = inputUnique;
+                    displayParseResult();
+                    alert(`重複データを除いた${inputUnique.length}件で処理を続けます`);
+                }
+            }
+
+            // ステップ2: 既存の保存済み座標との重複チェック
             const duplicates = [];
             const nonDuplicates = [];
-            
+
             parsedCoordinates.forEach(coord => {
-                const isDuplicate = savedCoordinates.some(saved => 
+                const isDuplicate = savedCoordinates.some(saved =>
                     saved.x === coord.x && saved.y === coord.y
                 );
                 if (isDuplicate) {
@@ -2302,25 +2348,25 @@
                     nonDuplicates.push(coord);
                 }
             });
-            
+
             if (duplicates.length > 0) {
                 const saveAll = confirm(
-                    `重複データが${duplicates.length}件ありますが、登録を行いますか?\n` +
+                    `既存データとの重複が${duplicates.length}件ありますが、登録を行いますか?\n` +
                     `(重複データは、マップには表示せずに保存されます)`
                 );
-                
+
                 if (saveAll) {
                     saveCoordsToDatabase(parsedCoordinates, duplicates);
                     clearParseResult();
                 } else {
                     const saveNonDuplicates = confirm('重複データ以外の保存を行いますか?');
-                    
+
                     if (saveNonDuplicates) {
                         saveCoordsToDatabase(nonDuplicates, []);
-                        
+
                         parsedCoordinates = duplicates;
                         displayParseResult();
-                        
+
                         alert(`${nonDuplicates.length}件/${parsedCoordinates.length + nonDuplicates.length}件のデータを保存しました`);
                     }
                 }
@@ -2894,18 +2940,17 @@
                 headerDiv.onclick = () => toggleGroupExpansion(group.id);
                 
                 headerDiv.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <span style="display: flex; align-items: center;">
-                            <span class="group-expand-icon">▶</span>
-                            <strong>${group.name}</strong> (${group.coordinateIds.length}件)
-                        </span>
-                        <div class="item-actions" onclick="event.stopPropagation();">
-                            <button onclick="selectGroupCoordinates('${group.id}')">選択</button>
-                            <button onclick="addCoordinatesToGroup('${group.id}')" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">➕追加</button>
-                            <button onclick="editGroup('${group.id}')">✏️</button>
-                            <button onclick="deleteGroup('${group.id}')" 
-                                    style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
-                        </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span class="group-expand-icon">▶</span>
+                        <strong style="flex: 1;">${group.name}</strong>
+                        <span style="color: #666; margin-right: 8px;">(${group.coordinateIds.length}件)</span>
+                    </div>
+                    <div class="item-actions" onclick="event.stopPropagation();">
+                        <button onclick="selectGroupCoordinates('${group.id}')">選択</button>
+                        <button onclick="addCoordinatesToGroup('${group.id}')" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">➕追加</button>
+                        <button onclick="editGroup('${group.id}')">✏️</button>
+                        <button onclick="deleteGroup('${group.id}')"
+                                style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
                     </div>
                 `;
                 
