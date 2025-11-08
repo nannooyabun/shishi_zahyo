@@ -3815,12 +3815,12 @@
                 
                 div.innerHTML = `
                     <label style="display: flex; align-items: center; flex: 1; cursor: pointer;">
-                        <input type="checkbox" ${selectedObstacleIds.has(obstacle.id) ? 'checked' : ''} 
-                               onchange="toggleObstacleSelection(${obstacle.id}, this.checked)">
+                        <input type="checkbox" ${selectedObstacleIds.has(obstacle.id) ? 'checked' : ''}
+                               onchange="toggleObstacleSelection('${obstacle.id}', this.checked)">
                         <span>${obstacleName} #${index + 1} (${obstacle.cells.length}マス)</span>
                     </label>
                     <div class="item-actions">
-                        <button onclick="deleteObstacleItem(${obstacle.id})" 
+                        <button onclick="deleteObstacleItem('${obstacle.id}')"
                                 style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
                     </div>
                 `;
@@ -3852,6 +3852,12 @@
             if (confirm('この障害物を削除しますか?')) {
                 obstacles = obstacles.filter(o => o.id !== id);
                 selectedObstacleIds.delete(id);
+
+                // Firebaseに保存
+                saveObstaclesToFirebase().catch(error => {
+                    console.error('障害物の保存エラー:', error);
+                });
+
                 updateObstaclesList();
                 updateStats();
                 drawMap();
