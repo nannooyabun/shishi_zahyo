@@ -1375,16 +1375,13 @@
                         id: data[key].id || key
                     }));
                     console.log(`${coordinateGroups.length}件のグループを読み込みました`);
-
-                    // デフォルトグループがない場合は作成
-                    if (!coordinateGroups.find(g => g.id === 'default')) {
-                        createDefaultGroup();
-                    }
-
                     updateGroupsList();
                 } else {
                     console.log('グループデータがありません');
-                    createDefaultGroup();
+                    // 初回のみデフォルトグループを作成
+                    if (coordinateGroups.length === 0) {
+                        createDefaultGroup();
+                    }
                 }
             });
 
@@ -1472,14 +1469,13 @@
             document.addEventListener('keyup', handleKeyUp);
 
             initColorPicker();
-            createDefaultGroup();
 
             // 修正3: ローカルタイムゾーンで日付を設定
             const today = new Date();
             const dateString = getLocalDateString(today);
             document.getElementById('dateFilterTo').value = dateString;
 
-            // Firebaseからデータを読み込み
+            // Firebaseからデータを読み込み（デフォルトグループは読み込み時に必要に応じて作成）
             loadFromFirebase();
 
             drawMap();
@@ -1496,12 +1492,19 @@
         
         // デフォルトグループの作成
         function createDefaultGroup() {
-            coordinateGroups.push({
+            const defaultGroup = {
                 id: 'default',
                 name: '登録済み座標',
                 coordinateIds: [],
                 createdAt: new Date().toISOString()
+            };
+            coordinateGroups.push(defaultGroup);
+
+            // Firebaseに保存
+            saveGroupToFirebase(defaultGroup).catch(error => {
+                console.error('デフォルトグループの保存エラー:', error);
             });
+
             updateGroupsList();
         }
         
