@@ -1214,6 +1214,9 @@
                             <button onclick="deleteSelectedCoordinates()" style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️ 選択削除</button>
                             <button onclick="exportData()" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">💾 データ出力</button>
                         </div>
+                        <div class="map-controls" style="margin-top: 8px;">
+                            <button onclick="createGroupWithPrompt()" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); width: 100%;">📦 選択座標でグループを作成</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3463,7 +3466,40 @@
             updateGroupsList();
             updateStats();
         }
-        
+
+        // ダイアログでグループ名を入力してグループを作成
+        function createGroupWithPrompt() {
+            if (selectedCoordinateIds.size === 0) {
+                alert('グループに追加する座標を選択してください');
+                return;
+            }
+
+            const name = prompt('グループ名を入力してください:');
+            if (!name || name.trim() === '') {
+                return; // キャンセルまたは空白の場合は何もしない
+            }
+
+            const newGroup = {
+                id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                name: name.trim(),
+                coordinateIds: Array.from(selectedCoordinateIds),
+                createdAt: new Date().toISOString()
+            };
+
+            coordinateGroups.push(newGroup);
+
+            // Firebaseに個別保存（競合を防ぐため）
+            saveGroupToFirebase(newGroup).catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
+            selectedCoordinateIds.clear();
+
+            updateCoordinatesList();
+            updateGroupsList();
+            updateStats();
+        }
+
         // 修正8: グループリスト更新 - アコーディオン式
         function updateGroupsList() {
             const container = document.getElementById('groupList');
