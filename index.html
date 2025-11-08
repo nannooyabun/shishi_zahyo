@@ -3189,10 +3189,10 @@
                 
                 div.innerHTML = `
                     <label style="display: flex; align-items: center; flex: 1;">
-                        <input type="checkbox" ${isSelected ? 'checked' : ''} 
-                               onchange="toggleCoordinateSelection(${coord.id}, this.checked)" onclick="event.stopPropagation()">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''}
+                               onchange="toggleCoordinateSelection('${coord.id}', this.checked)" onclick="event.stopPropagation()">
                         <span>
-                            <a class="coordinate-name-link" onclick="jumpToCoordinate(${coord.id}); event.stopPropagation();">
+                            <a class="coordinate-name-link" onclick="jumpToCoordinate('${coord.id}'); event.stopPropagation();">
                                 ${coord.name}: @${coord.x} ${coord.y}
                             </a>
                             ${isDuplicate ? '<span style="color: #ff9800; font-size: 0.9em; margin-left: 4px;">[重複]</span>' : ''}
@@ -3202,8 +3202,8 @@
                         </span>
                     </label>
                     <div class="item-actions">
-                        <button onclick="editCoordinate(${coord.id}); event.stopPropagation();">✏️</button>
-                        <button onclick="deleteCoordinate(${coord.id}); event.stopPropagation();" 
+                        <button onclick="editCoordinate('${coord.id}'); event.stopPropagation();">✏️</button>
+                        <button onclick="deleteCoordinate('${coord.id}'); event.stopPropagation();"
                                 style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
                     </div>
                 `;
