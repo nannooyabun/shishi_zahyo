@@ -1423,7 +1423,12 @@
         // グループをFirebaseに保存
         function saveGroupToFirebase(group) {
             const groupId = group.id.toString();
-            return groupsRef.child(groupId).set(group);
+            // coordinateIdsが空配列の場合、空配列として明示的に保存
+            const groupData = {
+                ...group,
+                coordinateIds: group.coordinateIds || []
+            };
+            return groupsRef.child(groupId).set(groupData);
         }
 
         // グループをFirebaseから削除
