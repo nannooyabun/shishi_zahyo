@@ -3451,7 +3451,7 @@
                     <div style="display: flex; align-items: center; margin-bottom: 8px;">
                         <span class="group-expand-icon">▶</span>
                         <strong style="flex: 1;">${group.name}</strong>
-                        <span style="color: #666; margin-right: 8px;">(${group.coordinateIds.length}件)</span>
+                        <span style="color: #666; margin-right: 8px;">(${(group.coordinateIds || []).length}件)</span>
                     </div>
                     <div class="item-actions" onclick="event.stopPropagation();">
                         <button onclick="selectGroupCoordinates('${group.id}')">選択</button>
@@ -3468,7 +3468,7 @@
                 const coordsDiv = document.createElement('div');
                 coordsDiv.className = 'group-coordinates';
                 
-                const groupCoords = savedCoordinates.filter(c => group.coordinateIds.includes(c.id));
+                const groupCoords = savedCoordinates.filter(c => (group.coordinateIds || []).includes(c.id));
                 groupCoords.forEach((coord, index) => {
                     const coordItem = document.createElement('div');
                     coordItem.className = 'group-coord-item';
