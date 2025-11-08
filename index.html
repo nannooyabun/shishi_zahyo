@@ -1143,7 +1143,7 @@
                     <input type="text" id="coordInputGroupName" placeholder="グループ名を指定すると自動作成されます" style="width: 100%; margin-bottom: 8px; padding: 8px;">
                     <label>区切り文字(任意・空欄可):</label>
                     <input type="text" id="customDelimiter" placeholder="例: | または : など" style="width: 100%; margin-bottom: 8px;">
-                    <textarea id="coordInput" placeholder="座標を入力してください&#10;例:&#10;城A @320 850&#10;城B @350 870&#10;&#10;または連続入力:&#10;京田楓花: @385 767、綾瀬: 該当なし綾瀬はるか1@354 875"></textarea>
+                    <textarea id="coordInput" placeholder="座標を入力してください&#10;例:&#10;城A @320 850&#10;城B @350 870&#10;&#10;または連続入力:&#10;なんの親分@342 828、菊奴: @367 771、杜若奏子: @398 786"></textarea>
                     <button onclick="parseCoordinates()">📥 座標を解析</button>
                 </div>
 
@@ -1160,8 +1160,25 @@
                     <!-- グループ管理 -->
                     <div class="section group-section">
                         <h2>📦 グループ管理</h2>
-                        <input type="text" id="groupName" placeholder="グループ名" style="width: 100%; padding: 8px; margin-bottom: 8px;">
-                        <button onclick="createGroup()">➕ グループを作成</button>
+
+                        <!-- グループ作成ボタン -->
+                        <button onclick="createGroupWithPrompt()" style="width: 100%; margin-bottom: 8px;">➕ グループを作成</button>
+
+                        <!-- グループ検索・ソート -->
+                        <div class="filter-controls" style="margin-bottom: 8px;">
+                            <input type="text" id="groupNameFilter" placeholder="グループ名で検索" onkeyup="applyGroupFilters()" style="width: 100%;">
+                        </div>
+                        <div class="filter-controls" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <select id="groupSortBy" onchange="applyGroupFilters()" style="flex: 1;">
+                                <option value="date-desc">作成日時（新しい順）</option>
+                                <option value="date-asc">作成日時（古い順）</option>
+                                <option value="name-asc">名前（A→Z）</option>
+                                <option value="name-desc">名前（Z→A）</option>
+                                <option value="count-desc">登録件数（多い順）</option>
+                                <option value="count-asc">登録件数（少ない順）</option>
+                            </select>
+                        </div>
+
                         <div id="groupList" style="max-height: 400px; overflow-y: auto; margin-top: 12px;"></div>
                     </div>
 
@@ -3500,12 +3517,47 @@
             updateStats();
         }
 
-        // 修正8: グループリスト更新 - アコーディオン式
+        // グループのフィルタリングとソート
+        function applyGroupFilters() {
+            updateGroupsList();
+        }
+
+        // 修正8: グループリスト更新 - アコーディオン式（フィルタ・ソート対応）
         function updateGroupsList() {
             const container = document.getElementById('groupList');
             container.innerHTML = '';
-            
-            coordinateGroups.forEach(group => {
+
+            // フィルタリング
+            const searchText = document.getElementById('groupNameFilter')?.value.toLowerCase() || '';
+            let filteredGroups = coordinateGroups.filter(group => {
+                if (searchText && !group.name.toLowerCase().includes(searchText)) {
+                    return false;
+                }
+                return true;
+            });
+
+            // ソート
+            const sortBy = document.getElementById('groupSortBy')?.value || 'date-desc';
+            filteredGroups.sort((a, b) => {
+                switch (sortBy) {
+                    case 'date-desc':
+                        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                    case 'date-asc':
+                        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+                    case 'name-asc':
+                        return a.name.localeCompare(b.name);
+                    case 'name-desc':
+                        return b.name.localeCompare(a.name);
+                    case 'count-desc':
+                        return (b.coordinateIds?.length || 0) - (a.coordinateIds?.length || 0);
+                    case 'count-asc':
+                        return (a.coordinateIds?.length || 0) - (b.coordinateIds?.length || 0);
+                    default:
+                        return 0;
+                }
+            });
+
+            filteredGroups.forEach(group => {
                 const div = document.createElement('div');
                 div.className = 'group-item' + (expandedGroupId === group.id ? ' expanded' : '');
                 
