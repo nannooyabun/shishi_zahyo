@@ -1372,7 +1372,8 @@
                 if (data) {
                     coordinateGroups = Object.keys(data).map(key => ({
                         ...data[key],
-                        id: data[key].id || key
+                        id: data[key].id || key,
+                        coordinateIds: data[key].coordinateIds || []  // coordinateIdsが存在しない場合は空配列
                     }));
                     console.log(`${coordinateGroups.length}件のグループを読み込みました`);
                     updateGroupsList();
@@ -2871,11 +2872,17 @@
 
                 // デフォルトグループに追加
                 if (defaultGroup) {
+                    if (!defaultGroup.coordinateIds) {
+                        defaultGroup.coordinateIds = [];
+                    }
                     defaultGroup.coordinateIds.push(newCoord.id);
                 }
 
                 // 指定されたグループにも追加
                 if (targetGroup) {
+                    if (!targetGroup.coordinateIds) {
+                        targetGroup.coordinateIds = [];
+                    }
                     targetGroup.coordinateIds.push(newCoord.id);
                 }
 
@@ -2885,6 +2892,9 @@
                     duplicateCoordinateIds.add(newCoord.id);
                     // 重複座標グループに追加
                     if (duplicateGroup) {
+                        if (!duplicateGroup.coordinateIds) {
+                            duplicateGroup.coordinateIds = [];
+                        }
                         duplicateGroup.coordinateIds.push(newCoord.id);
                     }
                 }
