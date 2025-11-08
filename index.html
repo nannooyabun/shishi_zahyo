@@ -1807,15 +1807,17 @@
                 });
             });
 
-            coordinateGroups.push({
-                id: Date.now().toString(),
+            const newGroup = {
+                id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
                 name: groupName,
                 coordinateIds: coordIds,
                 createdAt: new Date().toISOString()
-            });
+            };
 
-            // グループをFirebaseに保存
-            saveAllGroupsToFirebase().catch(error => {
+            coordinateGroups.push(newGroup);
+
+            // グループをFirebaseに個別保存（競合を防ぐため）
+            saveGroupToFirebase(newGroup).catch(error => {
                 console.error('グループの保存エラー:', error);
             });
 
@@ -2900,9 +2902,16 @@
                 }
             });
 
-            // グループをFirebaseに保存
-            saveAllGroupsToFirebase().catch(error => {
-                console.error('グループの保存エラー:', error);
+            // 更新されたグループを個別にFirebaseに保存（競合を防ぐため）
+            const groupsToSave = [];
+            if (defaultGroup) groupsToSave.push(defaultGroup);
+            if (targetGroup && targetGroup !== defaultGroup) groupsToSave.push(targetGroup);
+            if (duplicateGroup && duplicateGroup !== defaultGroup && duplicateGroup !== targetGroup) groupsToSave.push(duplicateGroup);
+
+            groupsToSave.forEach(group => {
+                saveGroupToFirebase(group).catch(error => {
+                    console.error('グループの保存エラー:', error);
+                });
             });
 
             updateCoordinatesList();
@@ -3370,13 +3379,17 @@
 
                 savedCoordinates = savedCoordinates.filter(c => !selectedCoordinateIds.has(c.id));
 
+                // 各グループから削除された座標を除去し、変更があったグループのみ保存
                 coordinateGroups.forEach(group => {
+                    const originalLength = group.coordinateIds.length;
                     group.coordinateIds = group.coordinateIds.filter(id => !selectedCoordinateIds.has(id));
-                });
 
-                // グループをFirebaseに保存
-                saveAllGroupsToFirebase().catch(error => {
-                    console.error('グループの保存エラー:', error);
+                    // coordinateIdsに変更があった場合のみFirebaseに保存（競合を防ぐため）
+                    if (group.coordinateIds.length !== originalLength) {
+                        saveGroupToFirebase(group).catch(error => {
+                            console.error('グループの保存エラー:', error);
+                        });
+                    }
                 });
 
                 selectedCoordinateIds.clear();
@@ -3429,15 +3442,17 @@
                 return;
             }
 
-            coordinateGroups.push({
-                id: Date.now().toString(),
+            const newGroup = {
+                id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
                 name: name,
                 coordinateIds: Array.from(selectedCoordinateIds),
                 createdAt: new Date().toISOString()
-            });
+            };
 
-            // Firebaseに保存
-            saveAllGroupsToFirebase().catch(error => {
+            coordinateGroups.push(newGroup);
+
+            // Firebaseに個別保存（競合を防ぐため）
+            saveGroupToFirebase(newGroup).catch(error => {
                 console.error('グループの保存エラー:', error);
             });
 
