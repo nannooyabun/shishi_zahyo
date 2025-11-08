@@ -1354,7 +1354,12 @@
                     }));
                     console.log(`${savedCoordinates.length}件の座標を読み込みました`);
                     updateCoordinatesList();
-                    drawMap();
+
+                    // 確実に再描画されるようrequestAnimationFrameを使用
+                    requestAnimationFrame(() => {
+                        drawMap();
+                    });
+
                     updateStats();
                 } else {
                     console.log('座標データがありません');
@@ -1370,16 +1375,13 @@
                         id: data[key].id || key
                     }));
                     console.log(`${coordinateGroups.length}件のグループを読み込みました`);
-
-                    // デフォルトグループがない場合は作成
-                    if (!coordinateGroups.find(g => g.id === 'default')) {
-                        createDefaultGroup();
-                    }
-
                     updateGroupsList();
                 } else {
                     console.log('グループデータがありません');
-                    createDefaultGroup();
+                    // 初回のみデフォルトグループを作成
+                    if (coordinateGroups.length === 0) {
+                        createDefaultGroup();
+                    }
                 }
             });
 
@@ -1396,7 +1398,11 @@
                     console.log(`${obstacles.length}件の障害物を読み込みました`);
                     updateObstaclesList();
                     updateCustomObstaclesList();
-                    drawMap();
+
+                    // 確実に再描画されるようrequestAnimationFrameを使用
+                    requestAnimationFrame(() => {
+                        drawMap();
+                    });
                 } else {
                     console.log('障害物データがありません');
                 }
@@ -1463,14 +1469,13 @@
             document.addEventListener('keyup', handleKeyUp);
 
             initColorPicker();
-            createDefaultGroup();
 
             // 修正3: ローカルタイムゾーンで日付を設定
             const today = new Date();
             const dateString = getLocalDateString(today);
             document.getElementById('dateFilterTo').value = dateString;
 
-            // Firebaseからデータを読み込み
+            // Firebaseからデータを読み込み（デフォルトグループは読み込み時に必要に応じて作成）
             loadFromFirebase();
 
             drawMap();
@@ -1487,12 +1492,19 @@
         
         // デフォルトグループの作成
         function createDefaultGroup() {
-            coordinateGroups.push({
+            const defaultGroup = {
                 id: 'default',
                 name: '登録済み座標',
                 coordinateIds: [],
                 createdAt: new Date().toISOString()
+            };
+            coordinateGroups.push(defaultGroup);
+
+            // Firebaseに保存
+            saveGroupToFirebase(defaultGroup).catch(error => {
+                console.error('デフォルトグループの保存エラー:', error);
             });
+
             updateGroupsList();
         }
         
@@ -2018,37 +2030,37 @@
         // 修正1: ドラッグ障害物の確定 - currentModeを引数として受け取る
         function confirmDragObstacle(mode) {
             if (tempSelection.size === 0) return;
-            
+
             // 修正1: dragStartCell.isObstacleではなくmodeから判定
             const isAddMode = (mode !== 'delete');
-            
-            tempSelection.forEach(key => {
-                const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
-                
-                if (isAddMode) {
+
+            if (isAddMode) {
+                // 追加モード：選択したセルを新しい障害物として作成
+                const newCells = [];
+                tempSelection.forEach(key => {
+                    const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
                     if (!existingObstacle) {
-                        let found = false;
-                        for (let obstacle of obstacles) {
-                            if (obstacle.type === selectedObstacleType) {
-                                obstacle.cells.push(key);
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            obstacles.push({
-                                id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
-                                type: selectedObstacleType,
-                                cells: [key]
-                            });
-                        }
+                        newCells.push(key);
                     }
-                } else {
+                });
+
+                // 新しいセルがあれば、新しい障害物オブジェクトを作成
+                if (newCells.length > 0) {
+                    obstacles.push({
+                        id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                        type: selectedObstacleType,
+                        cells: newCells
+                    });
+                }
+            } else {
+                // 削除モード：既存の障害物からセルを削除
+                tempSelection.forEach(key => {
+                    const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
                     if (existingObstacle) {
                         existingObstacle.cells = existingObstacle.cells.filter(c => c !== key);
                     }
-                }
-            });
+                });
+            }
             
             obstacles = obstacles.filter(o => o.cells.length > 0);
 
