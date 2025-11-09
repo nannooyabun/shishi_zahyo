@@ -2175,7 +2175,7 @@
         function handleWheel(e) {
             e.preventDefault();
             const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            scale = Math.max(0.5, Math.min(800, scale * delta));
+            scale = Math.max(0.5, Math.min(100, scale * delta));
             drawMap();
         }
         
@@ -2247,7 +2247,7 @@
                 
                 if (lastTouchDistance > 0) {
                     const delta = distance / lastTouchDistance;
-                    scale = Math.max(0.5, Math.min(800, scale * delta));
+                    scale = Math.max(0.5, Math.min(100, scale * delta));
                 }
                 lastTouchDistance = distance;
                 
@@ -4325,7 +4325,7 @@
         
         // ズーム
         function zoomIn() {
-            scale = Math.min(scale * 1.5, 800); // 最大倍率を800倍に引き上げ
+            scale = Math.min(scale * 1.5, 100); // 最大倍率を100倍に設定
             drawMap();
         }
         
