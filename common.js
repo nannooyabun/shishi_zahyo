@@ -178,45 +178,68 @@ function isSameCoordinate(coord1, coord2) {
 // ========================================
 
 // ワールド座標からスクリーン座標へ
-function worldToScreen(wx, wy) {
+function worldToScreen(x, y) {
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+
     if (gridType === 'diamond') {
-        const cx = offsetX;
-        const cy = offsetY;
-        const dx = wy - cy;
-        const dy = wx - cx;
-        const sx = canvas.width / 2 + dx * scale;
-        const sy = canvas.height / 2 + dy * scale;
-        return { x: sx, y: sy };
+        const dx = x - offsetX;
+        const dy = y - offsetY;
+
+        const screenX = width / 2 + (dx + dy) * scale / 2;
+        const screenY = height / 2 + (dx - dy) * scale * 0.876 / 2;
+
+        return { x: screenX, y: screenY };
     } else {
-        const sx = canvas.width / 2 + (wy - offsetY) * scale;
-        const sy = canvas.height / 2 + (wx - offsetX) * scale;
-        return { x: sx, y: sy };
+        return {
+            x: width / 2 + (y - offsetY) * scale,
+            y: height / 2 + (x - offsetX) * scale
+        };
     }
 }
 
 // スクリーン座標からワールド座標へ
-function screenToWorld(sx, sy) {
+function screenToWorld(screenX, screenY) {
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+
     if (gridType === 'diamond') {
-        const dx = sx - canvas.width / 2;
-        const dy = sy - canvas.height / 2;
-        const wx = offsetX + dy / scale;
-        const wy = offsetY + dx / scale;
-        return { x: Math.round(wx), y: Math.round(wy) };
+        const sx = (screenX - width / 2) / scale * 2;
+        const sy = (screenY - height / 2) / scale / 0.876 * 2;
+
+        const worldX = offsetX + (sx + sy) / 2;
+        const worldY = offsetY + (sx - sy) / 2;
+
+        return {
+            x: Math.round(worldX),
+            y: Math.round(worldY)
+        };
     } else {
-        const wx = offsetX + (sy - canvas.height / 2) / scale;
-        const wy = offsetY + (sx - canvas.width / 2) / scale;
-        return { x: Math.round(wx), y: Math.round(wy) };
+        return {
+            x: Math.round(offsetX + (screenY - height / 2) / scale),
+            y: Math.round(offsetY + (screenX - width / 2) / scale)
+        };
     }
 }
 
 // スクリーン座標の移動量をワールド座標の移動量に変換（ひし形モード用）
 function screenToWorldDelta(screenDelta) {
-    const dx = screenDelta.x;
-    const dy = screenDelta.y;
-    return {
-        x: dy / scale,
-        y: dx / scale
-    };
+    if (gridType === 'diamond') {
+        const sx = screenDelta.x / scale * 2;
+        const sy = screenDelta.y / scale / 0.876 * 2;
+
+        return {
+            x: (sx + sy) / 2,
+            y: (sx - sy) / 2
+        };
+    } else {
+        return {
+            x: screenDelta.y / scale,
+            y: screenDelta.x / scale
+        };
+    }
 }
 
 // ========================================
@@ -247,6 +270,8 @@ function resizeCanvas() {
     canvas.style.width = displayWidth + 'px';
     canvas.style.height = displayHeight + 'px';
 
+    // 変換行列をリセットしてからDPRスケールを設定
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
 
     drawMap();
