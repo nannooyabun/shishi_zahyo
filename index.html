@@ -1130,9 +1130,14 @@
                         <button onclick="jumpToPrimeZone()" title="一級地帯へ" style="background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);">🏠</button>
                     </div>
 
-                    <!-- 下部コントロール -->
-                    <div class="map-controls">
+                    <!-- 全画面表示ボタン（左下） -->
+                    <div style="position: absolute; left: 20px; bottom: 60px; z-index: 100;">
                         <button onclick="toggleFullscreen()" id="fullscreenBtn">🖼️ 全画面表示</button>
+                    </div>
+
+                    <!-- マップ中央座標表示（下側中央） -->
+                    <div id="centerCoordDisplay" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(0, 0, 0, 0.75); color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px;">
+                        中央: @0 0
                     </div>
                 </div>
 
@@ -1141,7 +1146,10 @@
                     <h2>📝 座標入力</h2>
                     <label>グループ名(任意・空欄可):</label>
                     <input type="text" id="coordInputGroupName" placeholder="グループ名を指定すると自動作成されます" style="width: 100%; margin-bottom: 8px; padding: 8px;">
-                    <label>区切り文字(任意・空欄可):</label>
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        区切り文字(任意・空欄可):
+                        <span onclick="showDelimiterHelp()" style="cursor: pointer; background: #2196f3; color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">?</span>
+                    </label>
                     <input type="text" id="customDelimiter" placeholder="例: | または : など" style="width: 100%; margin-bottom: 8px;">
                     <textarea id="coordInput" placeholder="座標を入力してください&#10;例:&#10;城A @320 850&#10;城B @350 870&#10;&#10;または連続入力:&#10;なんの親分@342 828、菊奴: @367 771、杜若奏子: @398 786"></textarea>
                     <button onclick="parseCoordinates()">📥 座標を解析</button>
@@ -1224,12 +1232,20 @@
                         <!-- フィルタ表示エリア -->
                         <div id="activeFiltersDisplay" class="active-filters-display" style="display: none;"></div>
 
+                        <!-- 選択件数表示 -->
+                        <div id="selectedCountDisplay" style="background: #e3f2fd; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-weight: bold; color: #1976d2; display: none;">
+                            選択中: <span id="selectedCountNumber">0</span>件
+                        </div>
+
                         <div id="coordinateList" style="max-height: 300px; overflow-y: auto;"></div>
                         <div class="map-controls" style="margin-top: 12px;">
                             <button onclick="showSelectedCoordinatesOnly()" class="secondary">👁️ 選択済み座標のみ表示</button>
                             <button onclick="showAllCoordinates()" class="secondary">👁️ すべて表示</button>
                             <button onclick="deleteSelectedCoordinates()" style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️ 選択削除</button>
-                            <button onclick="exportData()" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">💾 データ出力</button>
+                        </div>
+                        <div class="map-controls" style="margin-top: 8px;">
+                            <button onclick="copyDataToClipboard()" style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); flex: 1;">📋 クリップボードにコピー</button>
+                            <button onclick="exportToCSV()" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); flex: 1;">📊 CSV出力</button>
                         </div>
                         <div class="map-controls" style="margin-top: 8px;">
                             <button onclick="createGroupWithPrompt()" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); width: 100%;">📦 選択座標でグループを作成</button>
@@ -2396,6 +2412,12 @@
             if (draggedCoordinate) {
                 drawCoordinateMarker(draggedCoordinate, true);
             }
+
+            // マップ中央座標を表示を更新
+            const centerCoordDisplay = document.getElementById('centerCoordDisplay');
+            if (centerCoordDisplay) {
+                centerCoordDisplay.textContent = `中央: @${Math.round(offsetX)} ${Math.round(offsetY)}`;
+            }
         }
         
         // 一級地帯の背景描画
@@ -3001,7 +3023,14 @@
                         return 0;
                 }
             });
-            
+
+            // 名称検索時は自動的にヒットした座標を選択
+            if (nameFilter) {
+                filteredCoordinates.forEach(coord => {
+                    selectedCoordinateIds.add(coord.id);
+                });
+            }
+
             updateFilterDisplay();
             updateCoordinatesList();
         }
@@ -3245,8 +3274,25 @@
                 
                 container.appendChild(div);
             });
+
+            // 選択件数表示を更新
+            updateSelectedCount();
         }
-        
+
+        // 選択件数表示を更新
+        function updateSelectedCount() {
+            const countDisplay = document.getElementById('selectedCountDisplay');
+            const countNumber = document.getElementById('selectedCountNumber');
+            const count = selectedCoordinateIds.size;
+
+            if (count > 0) {
+                countDisplay.style.display = 'block';
+                countNumber.textContent = count;
+            } else {
+                countDisplay.style.display = 'none';
+            }
+        }
+
         // 座標にジャンプ
         function jumpToCoordinate(id) {
             const coord = savedCoordinates.find(c => c.id === id);
@@ -3323,6 +3369,7 @@
             } else {
                 selectedCoordinateIds.delete(id);
             }
+            updateSelectedCount();
             updateStats();
         }
         
@@ -4000,89 +4047,81 @@
             drawMap();
         }
         
-        // データ出力
-        function exportData() {
-            // 選択座標の数を確認
+        // 区切り文字の解説表示
+        function showDelimiterHelp() {
+            const helpText = `【区切り文字とは？】
+
+複数の座標を一度に入力する際、座標と座標の間を区切るための文字です。
+
+【使用例】
+・「、」（読点）で区切る場合：
+  城A@100 200、城B@150 250、城C@200 300
+
+・「|」（縦棒）で区切る場合：
+  城A@100 200|城B@150 250|城C@200 300
+
+・空欄の場合：
+  改行で自動的に区切られます
+
+【よく使われる区切り文字】
+、（読点）、。（句点）、|（縦棒）、:（コロン）など`;
+
+            alert(helpText);
+        }
+
+        // クリップボードにコピー
+        function copyDataToClipboard() {
             const selectedCount = selectedCoordinateIds.size;
+            let text = '';
 
             if (selectedCount === 0) {
-                // 選択座標がない場合
-                const exportAll = confirm('選択済み座標がありません。全座標を出力しますか？');
-                if (!exportAll) {
-                    return; // 出力しない
-                }
-                // 全座標を出力
-                exportAllData();
-            } else {
-                // 選択座標がある場合
-                const confirmExport = confirm(`選択中の${selectedCount}件のデータを出力しますか？`);
-                if (!confirmExport) {
-                    return; // 出力しない
-                }
-                // 選択座標のみを出力
-                exportSelectedData();
-            }
-        }
+                const exportAll = confirm('選択済み座標がありません。全座標をコピーしますか？');
+                if (!exportAll) return;
 
-        // 選択座標のみを出力
-        function exportSelectedData() {
-            const selectedCoords = savedCoordinates.filter(c => selectedCoordinateIds.has(c.id));
-
-            let text = '=== 選択済み座標データ ===\n';
-            selectedCoords.forEach(coord => {
-                text += `${coord.name}@${coord.x} ${coord.y}\n`;
-            });
-
-            text += '\n=== 選択座標を含むグループ ===\n';
-            coordinateGroups.forEach(group => {
-                const groupSelectedCoords = selectedCoords.filter(c => group.coordinateIds.includes(c.id));
-                if (groupSelectedCoords.length > 0) {
-                    text += `\n[${group.name}]\n`;
-                    groupSelectedCoords.forEach(coord => {
-                        text += `${coord.name}@${coord.x} ${coord.y}\n`;
-                    });
-                }
-            });
-
-            downloadTextFile(text, 'selected_coordinates.txt');
-        }
-
-        // 全座標を出力
-        function exportAllData() {
-            let text = '=== 座標データ ===\n';
-            savedCoordinates.forEach(coord => {
-                text += `${coord.name}@${coord.x} ${coord.y}\n`;
-            });
-
-            text += '\n=== グループ ===\n';
-            coordinateGroups.forEach(group => {
-                const coords = savedCoordinates.filter(c => group.coordinateIds.includes(c.id));
-                text += `\n[${group.name}]\n`;
-                coords.forEach(coord => {
+                savedCoordinates.forEach(coord => {
                     text += `${coord.name}@${coord.x} ${coord.y}\n`;
                 });
-            });
+            } else {
+                const selectedCoords = savedCoordinates.filter(c => selectedCoordinateIds.has(c.id));
+                selectedCoords.forEach(coord => {
+                    text += `${coord.name}@${coord.x} ${coord.y}\n`;
+                });
+            }
 
-            text += '\n=== 障害物 ===\n';
-            obstacles.forEach((obstacle, index) => {
-                let obstacleName = obstacleNames[obstacle.type] || obstacle.type;
-                const customObstacle = customObstacles.find(o => o.id === obstacle.type);
-                if (customObstacle) {
-                    obstacleName = customObstacle.name;
-                }
-                text += `${obstacleName} #${index + 1}: ${obstacle.cells.length}マス\n`;
+            // クリップボードにコピー
+            navigator.clipboard.writeText(text).then(() => {
+                alert('データをクリップボードにコピーしました！');
+            }).catch(err => {
+                console.error('クリップボードへのコピーに失敗しました:', err);
+                alert('クリップボードへのコピーに失敗しました');
             });
-
-            downloadTextFile(text, 'map_data.txt');
         }
-        
-        // テキストファイルのダウンロード
-        function downloadTextFile(text, filename) {
-            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+
+        // CSV出力
+        function exportToCSV() {
+            const selectedCount = selectedCoordinateIds.size;
+            let coords;
+
+            if (selectedCount === 0) {
+                const exportAll = confirm('選択済み座標がありません。全座標をCSV出力しますか？');
+                if (!exportAll) return;
+                coords = savedCoordinates;
+            } else {
+                coords = savedCoordinates.filter(c => selectedCoordinateIds.has(c.id));
+            }
+
+            // CSVデータ作成（名前@X座標 Y座標形式）
+            let csv = '';
+            coords.forEach(coord => {
+                csv += `${coord.name}@${coord.x} ${coord.y}\n`;
+            });
+
+            // CSVファイルとしてダウンロード
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename;
+            a.download = selectedCount === 0 ? 'all_coordinates.csv' : 'selected_coordinates.csv';
             a.click();
             URL.revokeObjectURL(url);
         }
