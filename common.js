@@ -260,17 +260,15 @@ function resizeCanvas() {
         displayWidth = window.innerWidth;
         displayHeight = window.innerHeight;
     } else {
-        // 通常表示時は、他の要素の高さを計算
+        // 通常表示時は、固定配置でない要素の高さのみ計算
+        // position: absolute の要素（ズームボタン、全画面ボタン、座標表示）は
+        // Canvasの上に重なるので計算から除外
         const h2 = container.querySelector('h2');
         const gridDisplay = container.querySelector('.grid-display');
-        const fullscreenBtn = container.querySelector('#fullscreenBtn');
-        const centerCoordDisplay = container.querySelector('#centerCoordDisplay');
 
         let occupiedHeight = 0;
         if (h2) occupiedHeight += h2.offsetHeight + 15; // margin-bottom含む
         if (gridDisplay) occupiedHeight += gridDisplay.offsetHeight + 15; // margin-bottom含む
-        if (fullscreenBtn) occupiedHeight += fullscreenBtn.offsetHeight + 10;
-        if (centerCoordDisplay) occupiedHeight += centerCoordDisplay.offsetHeight;
 
         // コンテナのパディング（上下20px × 2 = 40px）
         const containerPadding = 40;
@@ -279,7 +277,7 @@ function resizeCanvas() {
         const availableWidth = rect.width - containerPadding;
         const availableHeight = rect.height - containerPadding - occupiedHeight;
 
-        // 正方形を維持しつつ、利用可能なスペースに収める
+        // 正方形を維持しつつ、利用可能なスペースを最大限活用
         const maxSize = Math.min(availableWidth, availableHeight);
 
         displayWidth = maxSize > 0 ? maxSize : 400; // 最小サイズ確保
