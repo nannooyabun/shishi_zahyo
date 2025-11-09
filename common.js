@@ -260,8 +260,15 @@ function resizeCanvas() {
         displayWidth = window.innerWidth;
         displayHeight = window.innerHeight;
     } else {
-        displayWidth = rect.width;
-        displayHeight = rect.height;
+        // 通常表示時は親要素のサイズを使用
+        // マス目を正方形に保つため、アスペクト比を考慮
+        const availableWidth = rect.width;
+        const availableHeight = rect.height;
+
+        // 正方形のマス目を維持するため、width と height の小さい方に合わせる
+        const size = Math.min(availableWidth, availableHeight);
+        displayWidth = availableWidth;
+        displayHeight = availableHeight;
     }
 
     canvas.width = displayWidth * dpr;
@@ -783,11 +790,7 @@ function toggleFullscreen() {
     if (!document.fullscreenElement) {
         section.requestFullscreen().then(() => {
             section.classList.add('fullscreen-container');
-            btn.textContent = '✕ 全画面解除';
-            setTimeout(() => {
-                resizeCanvas();
-                drawMap();
-            }, 100);
+            if (btn) btn.textContent = '✕ 全画面解除';
         }).catch(err => {
             console.error('全画面表示エラー:', err);
             alert('全画面表示に失敗しました');
@@ -795,21 +798,17 @@ function toggleFullscreen() {
     } else {
         document.exitFullscreen().then(() => {
             section.classList.remove('fullscreen-container');
-            btn.textContent = '🖼️ 全画面表示';
-            setTimeout(() => {
-                resizeCanvas();
-                drawMap();
-            }, 100);
+            if (btn) btn.textContent = '🖼️ 全画面表示';
         });
     }
 }
 
 // 全画面変更イベントをリッスン
 document.addEventListener('fullscreenchange', () => {
+    // 全画面表示の切り替え後、DOMが安定するまで待つ
     setTimeout(() => {
         resizeCanvas();
-        drawMap();
-    }, 100);
+    }, 200);
 });
 
 // ========================================
