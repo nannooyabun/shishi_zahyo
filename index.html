@@ -1141,6 +1141,27 @@
                          onmouseout="this.style.background='rgba(0, 0, 0, 0.75)'">
                         中央: @0 0
                     </div>
+
+                    <!-- 座標ジャンプダイアログ -->
+                    <div id="jumpDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center;">
+                        <div style="background: white; border-radius: 12px; padding: 20px; max-width: 400px; width: 90%;">
+                            <h3 style="margin-top: 0;">📍 座標にジャンプ</h3>
+                            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">X座標:</label>
+                                    <input type="number" id="jumpDialogX" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">Y座標:</label>
+                                    <input type="number" id="jumpDialogY" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="executeJump()" style="flex: 1; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">🚀 ジャンプ</button>
+                                <button onclick="closeJumpDialog()" class="secondary" style="flex: 1;">キャンセル</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 座標入力 -->
@@ -2154,7 +2175,7 @@
         function handleWheel(e) {
             e.preventDefault();
             const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            scale = Math.max(0.5, Math.min(20, scale * delta));
+            scale = Math.max(0.5, Math.min(800, scale * delta));
             drawMap();
         }
         
@@ -2226,7 +2247,7 @@
                 
                 if (lastTouchDistance > 0) {
                     const delta = distance / lastTouchDistance;
-                    scale = Math.max(0.5, Math.min(20, scale * delta));
+                    scale = Math.max(0.5, Math.min(800, scale * delta));
                 }
                 lastTouchDistance = distance;
                 
@@ -4528,25 +4549,5 @@
         </div>
     </div>
 
-    <!-- 座標ジャンプダイアログ -->
-    <div id="jumpDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center;">
-        <div style="background: white; border-radius: 12px; padding: 20px; max-width: 400px; width: 90%;">
-            <h3 style="margin-top: 0;">📍 座標にジャンプ</h3>
-            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                <div style="flex: 1;">
-                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">X座標:</label>
-                    <input type="number" id="jumpDialogX" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-                <div style="flex: 1;">
-                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">Y座標:</label>
-                    <input type="number" id="jumpDialogY" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <button onclick="executeJump()" style="flex: 1; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">🚀 ジャンプ</button>
-                <button onclick="closeJumpDialog()" class="secondary" style="flex: 1;">キャンセル</button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
