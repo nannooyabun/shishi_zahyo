@@ -1135,8 +1135,10 @@
                         <button onclick="toggleFullscreen()" id="fullscreenBtn">🖼️ 全画面表示</button>
                     </div>
 
-                    <!-- マップ中央座標表示（下側中央） -->
-                    <div id="centerCoordDisplay" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(0, 0, 0, 0.75); color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px;">
+                    <!-- マップ中央座標表示（下側中央） - クリックで座標ジャンプダイアログを表示 -->
+                    <div id="centerCoordDisplay" onclick="openJumpDialog()" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(0, 0, 0, 0.75); color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; cursor: pointer; transition: background 0.2s;"
+                         onmouseover="this.style.background='rgba(33, 150, 243, 0.9)'"
+                         onmouseout="this.style.background='rgba(0, 0, 0, 0.75)'">
                         中央: @0 0
                     </div>
                 </div>
@@ -1144,8 +1146,36 @@
                 <!-- 座標入力 -->
                 <div class="section coord-input-section">
                     <h2>📝 座標入力</h2>
-                    <label>グループ名(任意・空欄可):</label>
-                    <input type="text" id="coordInputGroupName" placeholder="グループ名を指定すると自動作成されます" style="width: 100%; margin-bottom: 8px; padding: 8px;">
+
+                    <!-- グループ設定 -->
+                    <label style="font-weight: bold; margin-bottom: 8px; display: block;">グループ設定(任意・空欄可):</label>
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: block; margin-bottom: 4px; cursor: pointer;">
+                            <input type="radio" name="groupMode" value="none" id="groupModeNone" checked onchange="toggleGroupMode()">
+                            グループに追加しない
+                        </label>
+                        <label style="display: block; margin-bottom: 4px; cursor: pointer;">
+                            <input type="radio" name="groupMode" value="new" id="groupModeNew" onchange="toggleGroupMode()">
+                            新規グループを作成
+                        </label>
+                        <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                            <input type="radio" name="groupMode" value="existing" id="groupModeExisting" onchange="toggleGroupMode()">
+                            既存グループに追加
+                        </label>
+                    </div>
+
+                    <!-- 新規グループ名入力 -->
+                    <div id="newGroupNameInput" style="display: none; margin-bottom: 8px;">
+                        <input type="text" id="coordInputGroupName" placeholder="新しいグループ名を入力" style="width: 100%; padding: 8px;">
+                    </div>
+
+                    <!-- 既存グループ選択 -->
+                    <div id="existingGroupSelect" style="display: none; margin-bottom: 8px;">
+                        <select id="coordInputGroupSelect" style="width: 100%; padding: 8px;">
+                            <option value="">グループを選択してください</option>
+                        </select>
+                    </div>
+
                     <label style="display: flex; align-items: center; gap: 8px;">
                         区切り文字(任意・空欄可):
                         <span onclick="showDelimiterHelp()" style="cursor: pointer; background: #2196f3; color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">?</span>
@@ -2776,6 +2806,38 @@
             document.getElementById('coordInput').value = '';
             document.getElementById('coordInputGroupName').value = '';
         }
+
+        // グループモード切り替え
+        function toggleGroupMode() {
+            const groupMode = document.querySelector('input[name="groupMode"]:checked').value;
+            const newGroupInput = document.getElementById('newGroupNameInput');
+            const existingGroupSelect = document.getElementById('existingGroupSelect');
+
+            if (groupMode === 'new') {
+                newGroupInput.style.display = 'block';
+                existingGroupSelect.style.display = 'none';
+            } else if (groupMode === 'existing') {
+                newGroupInput.style.display = 'none';
+                existingGroupSelect.style.display = 'block';
+                updateGroupSelectOptions(); // 既存グループリストを更新
+            } else {
+                newGroupInput.style.display = 'none';
+                existingGroupSelect.style.display = 'none';
+            }
+        }
+
+        // 既存グループ選択肢を更新
+        function updateGroupSelectOptions() {
+            const select = document.getElementById('coordInputGroupSelect');
+            select.innerHTML = '<option value="">グループを選択してください</option>';
+
+            coordinateGroups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group.id;
+                option.textContent = `${group.name} (${group.coordinateIds.length}件)`;
+                select.appendChild(option);
+            });
+        }
         
         // 座標を保存
         function saveCoordinates() {
@@ -2784,8 +2846,16 @@
                 return;
             }
 
-            // グループ名を取得
-            const groupName = document.getElementById('coordInputGroupName').value.trim();
+            // グループ設定を取得
+            const groupMode = document.querySelector('input[name="groupMode"]:checked').value;
+            let groupName = null;
+            let existingGroupId = null;
+
+            if (groupMode === 'new') {
+                groupName = document.getElementById('coordInputGroupName').value.trim();
+            } else if (groupMode === 'existing') {
+                existingGroupId = document.getElementById('coordInputGroupSelect').value;
+            }
 
             // ステップ1: 入力データ内での重複チェック
             const inputDuplicates = [];
@@ -2843,13 +2913,13 @@
                 );
 
                 if (saveAll) {
-                    saveCoordsToDatabase(parsedCoordinates, duplicates, groupName);
+                    saveCoordsToDatabase(parsedCoordinates, duplicates, groupName, existingGroupId);
                     clearParseResult();
                 } else {
                     const saveNonDuplicates = confirm('重複データ以外の保存を行いますか?');
 
                     if (saveNonDuplicates) {
-                        saveCoordsToDatabase(nonDuplicates, [], groupName);
+                        saveCoordsToDatabase(nonDuplicates, [], groupName, existingGroupId);
 
                         parsedCoordinates = duplicates;
                         displayParseResult();
@@ -2858,23 +2928,49 @@
                     }
                 }
             } else {
-                saveCoordsToDatabase(parsedCoordinates, [], groupName);
+                saveCoordsToDatabase(parsedCoordinates, [], groupName, existingGroupId);
                 clearParseResult();
             }
         }
         
         // 座標をデータベースに保存する内部関数
-        function saveCoordsToDatabase(coords, duplicates, groupName = null) {
-            // グループ名が指定されている場合、そのグループを作成または取得
+        function saveCoordsToDatabase(coords, duplicates, groupName = null, existingGroupId = null) {
+            // グループ設定を処理
             let targetGroup = null;
-            if (groupName && groupName.trim()) {
-                targetGroup = coordinateGroups.find(g => g.name === groupName.trim());
+
+            if (existingGroupId) {
+                // 既存グループに追加
+                targetGroup = coordinateGroups.find(g => g.id === existingGroupId);
                 if (!targetGroup) {
-                    // グループが存在しない場合、新規作成
+                    alert('選択されたグループが見つかりません');
+                    return;
+                }
+            } else if (groupName && groupName.trim()) {
+                // 新規グループ作成（グループ名重複チェック付き）
+                const existingGroup = coordinateGroups.find(g => g.name === groupName.trim());
+
+                if (existingGroup) {
+                    // グループ名が重複している場合、確認ダイアログを表示
+                    const choice = confirm(
+                        `グループ名 "${groupName.trim()}" は既に存在します。\n\n` +
+                        `「OK」: 既存のグループに追加\n` +
+                        `「キャンセル」: 保存をキャンセル（グループ名を変更してください）`
+                    );
+
+                    if (choice) {
+                        // 既存グループに追加
+                        targetGroup = existingGroup;
+                    } else {
+                        // キャンセル
+                        return;
+                    }
+                } else {
+                    // 新規グループを作成
                     targetGroup = {
-                        id: Date.now().toString(),
+                        id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
                         name: groupName.trim(),
-                        coordinateIds: []
+                        coordinateIds: [],
+                        createdAt: new Date().toISOString()
                     };
                     coordinateGroups.push(targetGroup);
                 }
@@ -3308,19 +3404,35 @@
         function jumpToPrimeZone() {
             offsetX = (primeZone.minX + primeZone.maxX) / 2;
             offsetY = (primeZone.minY + primeZone.maxY) / 2;
-            
+
             const dpr = window.devicePixelRatio || 1;
             const width = canvas.width / dpr;
             const height = canvas.height / dpr;
-            
+
             scale = Math.min(
                 width / (primeZone.maxY - primeZone.minY + 20),
                 height / (primeZone.maxX - primeZone.minX + 20)
             );
-            
+
             drawMap();
         }
-        
+
+        // 入力座標にジャンプ
+        function jumpToInputCoordinate() {
+            const x = parseInt(document.getElementById('jumpX').value);
+            const y = parseInt(document.getElementById('jumpY').value);
+
+            if (isNaN(x) || isNaN(y)) {
+                alert('X座標とY座標を入力してください');
+                return;
+            }
+
+            offsetX = x;
+            offsetY = y;
+            scale = Math.max(scale, 10); // 最低でも10倍にズーム
+            drawMap();
+        }
+
         // 一括選択モードの切り替え
         function toggleRangeSelectMode() {
             rangeSelectMode = document.getElementById('rangeSelectMode').checked;
@@ -3709,18 +3821,172 @@
             updateStats();
         }
         
-        // グループ編集
+        // グループ編集ダイアログを開く
+        let editingGroupId = null;
+        let editGroupSelectedCoordIds = new Set();
+
         function editGroup(groupId) {
             const group = coordinateGroups.find(g => g.id === groupId);
             if (!group) return;
-            
-            const newName = prompt('新しいグループ名を入力してください:', group.name);
-            if (newName) {
-                group.name = newName;
-                updateGroupsList();
+
+            editingGroupId = groupId;
+            editGroupSelectedCoordIds.clear();
+
+            // グループ名を設定
+            document.getElementById('editGroupName').value = group.name;
+
+            // 座標リストを表示
+            const coordsList = document.getElementById('editGroupCoordsList');
+            coordsList.innerHTML = '';
+
+            const groupCoords = savedCoordinates.filter(c => (group.coordinateIds || []).includes(c.id));
+            groupCoords.forEach(coord => {
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 8px; border-bottom: 1px solid #eee; display: flex; align-items: center;';
+                div.innerHTML = `
+                    <label style="display: flex; align-items: center; flex: 1; cursor: pointer;">
+                        <input type="checkbox" onchange="toggleEditGroupCoord('${coord.id}', this.checked)" style="margin-right: 8px;">
+                        <span>${coord.name}: @${coord.x} ${coord.y}</span>
+                    </label>
+                `;
+                coordsList.appendChild(div);
+            });
+
+            // ダイアログを表示
+            document.getElementById('groupEditDialog').style.display = 'flex';
+        }
+
+        // 編集グループの座標選択トグル
+        function toggleEditGroupCoord(coordId, checked) {
+            if (checked) {
+                editGroupSelectedCoordIds.add(coordId);
+            } else {
+                editGroupSelectedCoordIds.delete(coordId);
             }
         }
-        
+
+        // グループ編集ダイアログを閉じる
+        function closeGroupEditDialog() {
+            document.getElementById('groupEditDialog').style.display = 'none';
+            editingGroupId = null;
+            editGroupSelectedCoordIds.clear();
+        }
+
+        // グループ編集を保存
+        function saveGroupEdits() {
+            const group = coordinateGroups.find(g => g.id === editingGroupId);
+            if (!group) return;
+
+            const newName = document.getElementById('editGroupName').value.trim();
+            if (!newName) {
+                alert('グループ名を入力してください');
+                return;
+            }
+
+            // グループ名の重複チェック（自分以外）
+            const duplicateGroup = coordinateGroups.find(g => g.id !== editingGroupId && g.name === newName);
+            if (duplicateGroup) {
+                alert(`グループ名 "${newName}" は既に存在します`);
+                return;
+            }
+
+            group.name = newName;
+
+            // Firebaseに保存
+            saveGroupToFirebase(group).catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
+            closeGroupEditDialog();
+            updateGroupsList();
+            alert('グループを保存しました');
+        }
+
+        // 選択した座標をグループから削除
+        function deleteSelectedCoordinatesFromGroup() {
+            if (editGroupSelectedCoordIds.size === 0) {
+                alert('削除する座標を選択してください');
+                return;
+            }
+
+            const group = coordinateGroups.find(g => g.id === editingGroupId);
+            if (!group) return;
+
+            const confirmDelete = confirm(`選択した${editGroupSelectedCoordIds.size}件の座標をこのグループから削除しますか？\n（座標自体は削除されません）`);
+            if (!confirmDelete) return;
+
+            // グループから座標を削除
+            group.coordinateIds = group.coordinateIds.filter(id => !editGroupSelectedCoordIds.has(id));
+
+            // Firebaseに保存
+            saveGroupToFirebase(group).catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
+            // ダイアログを再表示
+            editGroup(editingGroupId);
+            updateGroupsList();
+        }
+
+        // グループを完全に削除
+        function deleteGroupCompletely() {
+            const group = coordinateGroups.find(g => g.id === editingGroupId);
+            if (!group) return;
+
+            const confirmDelete = confirm(`グループ "${group.name}" を完全に削除しますか？\n（座標自体は削除されません）`);
+            if (!confirmDelete) return;
+
+            // グループを削除
+            coordinateGroups = coordinateGroups.filter(g => g.id !== editingGroupId);
+
+            // Firebaseから削除
+            deleteGroupFromFirebase(editingGroupId).catch(error => {
+                console.error('グループの削除エラー:', error);
+            });
+
+            closeGroupEditDialog();
+            updateGroupsList();
+            updateCoordinatesList();
+            alert('グループを削除しました');
+        }
+
+        // 座標ジャンプダイアログを開く
+        function openJumpDialog() {
+            document.getElementById('jumpDialog').style.display = 'flex';
+            // 現在の中央座標を入力欄に設定
+            document.getElementById('jumpDialogX').value = Math.round(offsetX);
+            document.getElementById('jumpDialogY').value = Math.round(offsetY);
+        }
+
+        // 座標ジャンプダイアログを閉じる
+        function closeJumpDialog() {
+            document.getElementById('jumpDialog').style.display = 'none';
+        }
+
+        // 座標ジャンプを実行
+        function executeJump() {
+            const x = parseInt(document.getElementById('jumpDialogX').value);
+            const y = parseInt(document.getElementById('jumpDialogY').value);
+
+            if (isNaN(x) || isNaN(y)) {
+                alert('X座標とY座標を入力してください');
+                return;
+            }
+
+            // 座標を移動
+            offsetX = x;
+            offsetY = y;
+
+            // 最小倍率を確保
+            scale = Math.max(scale, 10);
+
+            // マップを再描画
+            drawMap();
+
+            // ダイアログを閉じる
+            closeJumpDialog();
+        }
+
         // グループ削除
         function deleteGroup(groupId) {
             if (groupId === 'default') {
@@ -4038,7 +4304,7 @@
         
         // ズーム
         function zoomIn() {
-            scale = Math.min(scale * 1.5, 20);
+            scale = Math.min(scale * 1.5, 800); // 最大倍率を800倍に引き上げ
             drawMap();
         }
         
@@ -4239,5 +4505,48 @@
         // ページ読み込み時に初期化
         window.addEventListener('load', init);
     </script>
+
+    <!-- グループ編集ダイアログ -->
+    <div id="groupEditDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; padding: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-top: 0;">グループを編集</h3>
+
+            <label style="display: block; margin-bottom: 8px; font-weight: bold;">グループ名:</label>
+            <input type="text" id="editGroupName" style="width: 100%; padding: 8px; margin-bottom: 16px;">
+
+            <label style="display: block; margin-bottom: 8px; font-weight: bold;">登録座標:</label>
+            <div id="editGroupCoordsList" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px; margin-bottom: 16px;">
+                <!-- 座標リストがここに表示されます -->
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="saveGroupEdits()" style="flex: 1; background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">💾 保存</button>
+                <button onclick="deleteSelectedCoordinatesFromGroup()" style="flex: 1; background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">🗑️ 選択を削除</button>
+                <button onclick="deleteGroupCompletely()" style="flex: 1; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">❌ グループ削除</button>
+                <button onclick="closeGroupEditDialog()" class="secondary" style="flex: 1;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 座標ジャンプダイアログ -->
+    <div id="jumpDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; padding: 20px; max-width: 400px; width: 90%;">
+            <h3 style="margin-top: 0;">📍 座標にジャンプ</h3>
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">X座標:</label>
+                    <input type="number" id="jumpDialogX" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">Y座標:</label>
+                    <input type="number" id="jumpDialogY" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="executeJump()" style="flex: 1; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">🚀 ジャンプ</button>
+                <button onclick="closeJumpDialog()" class="secondary" style="flex: 1;">キャンセル</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
