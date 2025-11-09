@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>座標管理システム - TOPページ</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* サイドメニューバー */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,0.2);
+            border-left-color: white;
+        }
+
+        .nav-item-icon {
+            font-size: 18px;
+        }
+
+        /* 操作説明パネル（サイドメニュー内） */
+        .sidebar-help {
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .help-toggle {
+            cursor: pointer;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .help-content {
+            display: none;
+            font-size: 12px;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+
+        .help-content.show {
+            display: block;
+        }
+
+        /* メインコンテンツエリア */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        /* マップセクション（左上、2行分） */
+        .map-section {
+            grid-row: 1 / 3;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .map-section h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .map-section canvas {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            min-height: 0;
+            width: 100%;
+        }
+
+        /* その他のセクション */
+        .section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .section h2 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        /* グリッド表示切替 */
+        .grid-display {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .grid-display label {
+            cursor: pointer;
+            padding: 8px 15px;
+            border-radius: 5px;
+            background: #f0f0f0;
+            transition: all 0.2s;
+        }
+
+        .grid-display label:has(input:checked) {
+            background: #667eea;
+            color: white;
+        }
+
+        .grid-display input {
+            margin-right: 5px;
+        }
+
+        /* マップ上のコントロール */
+        .zoom-controls {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .zoom-controls button {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        .zoom-controls button:hover {
+            transform: scale(1.1);
+        }
+
+        /* 全画面表示ボタン */
+        #fullscreenBtn {
+            position: absolute;
+            left: 20px;
+            bottom: 60px;
+            z-index: 100;
+            padding: 10px 15px;
+            border: none;
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* 中央座標表示 */
+        #centerCoordDisplay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #centerCoordDisplay:hover {
+            background: rgba(33, 150, 243, 0.9);
+        }
+
+        /* 座標ジャンプダイアログ */
+        #jumpDialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #jumpDialog > div {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        #jumpDialog h3 {
+            margin-top: 0;
+        }
+
+        #jumpDialog input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #jumpDialog button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #jumpDialog button:first-child {
+            background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+            color: white;
+        }
+
+        #jumpDialog button.secondary {
+            background: #ddd;
+            color: #333;
+        }
+
+        /* 全画面表示モード */
+        .fullscreen-container {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            overflow: hidden;
+            background: white;
+            margin: 0;
+            padding: 0;
+        }
+
+        .fullscreen-container .section {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        .fullscreen-container canvas {
+            flex: 1;
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+        }
+
+        /* リストのスクロールエリア */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        /* レスポンシブ */
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+            }
+
+            .map-section {
+                grid-row: auto;
+                height: 400px;
+            }
+
+            .sidebar {
+                width: 60px;
+            }
+
+            .sidebar-header h1,
+            .sidebar-header p,
+            .nav-item span,
+            .sidebar-help {
+                display: none;
+            }
+
+            .nav-item {
+                justify-content: center;
+            }
+        }
+
+        /* ボタンスタイル */
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        button.secondary {
+            background: #ddd;
+            color: #333;
+        }
+
+        /* 入力フィールド */
+        input, select, textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- サイドメニューバー -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>🗺️ 座標管理</h1>
+            <p>Shishi Zahyo System</p>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-item active" onclick="location.href='index.html'">
+                <span class="nav-item-icon">🏠</span>
+                <span>TOPページ</span>
+            </div>
+            <div class="nav-item" onclick="location.href='obstacles.html'">
+                <span class="nav-item-icon">🪨</span>
+                <span>障害物管理</span>
+            </div>
+            <div class="nav-item" onclick="location.href='coordinates.html'">
+                <span class="nav-item-icon">📍</span>
+                <span>座標管理</span>
+            </div>
+        </div>
+
+        <div class="sidebar-help">
+            <div class="help-toggle" onclick="toggleHelp()">
+                <span>📖 操作説明</span>
+                <span id="helpToggleIcon">▼</span>
+            </div>
+            <div class="help-content" id="helpContent">
+                <h4>マップ操作</h4>
+                <ul>
+                    <li>ドラッグ: マップ移動</li>
+                    <li>ホイール: ズーム</li>
+                    <li>ピンチ: ズーム（モバイル）</li>
+                    <li>中央座標タップ: 座標ジャンプ</li>
+                </ul>
+                <h4>閲覧モード</h4>
+                <p>保存済み座標とグループを閲覧できます。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main-container">
+        <div class="header">
+            <h1>🏠 TOPページ</h1>
+        </div>
+
+        <div class="content">
+            <!-- マップ表示 -->
+            <div class="map-section">
+                <h2>🗺️ マップ表示</h2>
+
+                <!-- グリッド表示切替 -->
+                <div class="grid-display">
+                    <label>
+                        <input type="radio" name="gridType" value="square" checked onchange="changeGridType('square')">
+                        ⬜ 正方形
+                    </label>
+                    <label>
+                        <input type="radio" name="gridType" value="diamond" onchange="changeGridType('diamond')">
+                        🔷 ひし形
+                    </label>
+                </div>
+
+                <canvas id="mapCanvas"></canvas>
+
+                <!-- ズームボタン -->
+                <div class="zoom-controls">
+                    <button onclick="zoomIn()" title="拡大">🔍</button>
+                    <button onclick="zoomOut()" title="縮小">🔎</button>
+                    <button onclick="jumpToPrimeZone()" title="一級地帯へ" style="background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);">🏠</button>
+                </div>
+
+                <!-- 全画面表示ボタン -->
+                <button onclick="toggleFullscreen()" id="fullscreenBtn">🖼️ 全画面表示</button>
+
+                <!-- 中央座標表示 -->
+                <div id="centerCoordDisplay" onclick="openJumpDialog()">中央: @0 0</div>
+
+                <!-- 座標ジャンプダイアログ -->
+                <div id="jumpDialog">
+                    <div>
+                        <h3>📍 座標にジャンプ</h3>
+                        <div style="display: flex; gap: 12px; margin: 16px 0;">
+                            <div style="flex: 1;">
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold;">X座標:</label>
+                                <input type="number" id="jumpDialogX">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold;">Y座標:</label>
+                                <input type="number" id="jumpDialogY">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="executeJump()" style="flex: 1;">🚀 ジャンプ</button>
+                            <button onclick="closeJumpDialog()" class="secondary" style="flex: 1;">キャンセル</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- グループ管理 -->
+            <div class="section">
+                <h2>📁 グループ管理</h2>
+                <input type="text" placeholder="グループ名で検索..." style="margin-bottom: 10px;">
+                <div class="scroll-area" id="groupsList">
+                    <p style="color: #999; text-align: center;">読み込み中...</p>
+                </div>
+            </div>
+
+            <!-- 保存済み座標 -->
+            <div class="section">
+                <h2>📍 保存済み座標</h2>
+                <input type="text" placeholder="名前で検索..." style="margin-bottom: 10px;">
+                <div class="scroll-area" id="coordinatesList">
+                    <p style="color: #999; text-align: center;">読み込み中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 共通JavaScript読み込み -->
+    <script src="common.js"></script>
+
+    <!-- TOPページ固有のJavaScript -->
+    <script>
+        // ========================================
+        // ページ初期化
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('TOPページを初期化中...');
+
+            // Canvas初期化
+            if (!initCommon('mapCanvas')) {
+                alert('Canvasの初期化に失敗しました');
+                return;
+            }
+
+            // Firebaseからデータを読み込み
+            loadDataFromFirebase();
+
+            // イベントリスナー設定
+            setupEventListeners();
+
+            console.log('TOPページの初期化完了');
+        });
+
+        // ========================================
+        // Firebaseデータ読み込み
+        // ========================================
+        function loadDataFromFirebase() {
+            // 座標データのリアルタイム同期
+            coordinatesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                savedCoordinates = data ? Object.values(data) : [];
+                updateCoordinatesList();
+                drawMap();
+            });
+
+            // グループデータのリアルタイム同期
+            groupsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                coordinateGroups = data ? Object.values(data) : [];
+                updateGroupsList();
+                drawMap();
+            });
+
+            // 障害物データのリアルタイム同期
+            obstaclesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                obstacles = data ? Object.values(data) : [];
+                drawMap();
+            });
+        }
+
+        // ========================================
+        // イベントリスナー設定
+        // ========================================
+        function setupEventListeners() {
+            // マウスイベント
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+
+            // タッチイベント
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+            // キーボードイベント
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+        }
+
+        // ========================================
+        // マウス・タッチイベント処理
+        // ========================================
+        function handleMouseDown(e) {
+            if (e.button !== 0) return;
+            isPanning = true;
+            lastPanPos = { x: e.clientX, y: e.clientY };
+        }
+
+        function handleMouseMove(e) {
+            if (isPanning && lastPanPos) {
+                const dx = e.clientX - lastPanPos.x;
+                const dy = e.clientY - lastPanPos.y;
+
+                if (gridType === 'diamond') {
+                    const screenDelta = { x: dx, y: dy };
+                    const worldDelta = screenToWorldDelta(screenDelta);
+                    offsetX -= worldDelta.x;
+                    offsetY -= worldDelta.y;
+                } else {
+                    offsetX -= dy / scale;
+                    offsetY -= dx / scale;
+                }
+
+                lastPanPos = { x: e.clientX, y: e.clientY };
+                drawMap();
+            }
+        }
+
+        function handleMouseUp() {
+            isPanning = false;
+            lastPanPos = null;
+        }
+
+        function handleWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            scale = Math.max(0.5, Math.min(100, scale * delta));
+            drawMap();
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 1) {
+                isPanning = true;
+                lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+            } else if (touches.length === 2) {
+                isPanning = true;
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                lastPanPos = {
+                    x: (touches[0].clientX + touches[1].clientX) / 2,
+                    y: (touches[0].clientY + touches[1].clientY) / 2
+                };
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 2) {
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (lastTouchDistance > 0) {
+                    const delta = distance / lastTouchDistance;
+                    scale = Math.max(0.5, Math.min(100, scale * delta));
+                }
+                lastTouchDistance = distance;
+
+                if (isPanning && lastPanPos) {
+                    const centerX = (touches[0].clientX + touches[1].clientX) / 2;
+                    const centerY = (touches[0].clientY + touches[1].clientY) / 2;
+                    const panDx = centerX - lastPanPos.x;
+                    const panDy = centerY - lastPanPos.y;
+
+                    if (gridType === 'diamond') {
+                        const screenDelta = { x: panDx, y: panDy };
+                        const worldDelta = screenToWorldDelta(screenDelta);
+                        offsetX -= worldDelta.x;
+                        offsetY -= worldDelta.y;
+                    } else {
+                        offsetX -= panDy / scale;
+                        offsetY -= panDx / scale;
+                    }
+
+                    lastPanPos = { x: centerX, y: centerY };
+                }
+                drawMap();
+            } else if (touches.length === 1 && isPanning && lastPanPos) {
+                const dx = touches[0].clientX - lastPanPos.x;
+                const dy = touches[0].clientY - lastPanPos.y;
+
+                if (gridType === 'diamond') {
+                    const screenDelta = { x: dx, y: dy };
+                    const worldDelta = screenToWorldDelta(screenDelta);
+                    offsetX -= worldDelta.x;
+                    offsetY -= worldDelta.y;
+                } else {
+                    offsetX -= dy / scale;
+                    offsetY -= dx / scale;
+                }
+
+                lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+                drawMap();
+            }
+        }
+
+        function handleTouchEnd() {
+            touches = [];
+            lastTouchDistance = 0;
+            isPanning = false;
+            lastPanPos = null;
+        }
+
+        function handleKeyDown(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                isSpaceKeyPressed = true;
+            }
+        }
+
+        function handleKeyUp(e) {
+            if (e.code === 'Space') {
+                isSpaceKeyPressed = false;
+            }
+        }
+
+        // ========================================
+        // UI更新関数
+        // ========================================
+        function updateGroupsList() {
+            const container = document.getElementById('groupsList');
+            if (coordinateGroups.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center;">グループがありません</p>';
+                return;
+            }
+
+            container.innerHTML = coordinateGroups.map(group => `
+                <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                    <strong>${group.name}</strong>
+                    <span style="color: #999; margin-left: 10px;">(${group.coordinateIds?.length || 0}件)</span>
+                </div>
+            `).join('');
+        }
+
+        function updateCoordinatesList() {
+            const container = document.getElementById('coordinatesList');
+            if (savedCoordinates.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center;">座標がありません</p>';
+                return;
+            }
+
+            container.innerHTML = savedCoordinates.map(coord => `
+                <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                    <strong>${coord.name}</strong>
+                    <span style="color: #999; margin-left: 10px;">@${coord.x} ${coord.y}</span>
+                </div>
+            `).join('');
+        }
+
+        // ========================================
+        // ヘルプトグル
+        // ========================================
+        function toggleHelp() {
+            const content = document.getElementById('helpContent');
+            const icon = document.getElementById('helpToggleIcon');
+            content.classList.toggle('show');
+            icon.textContent = content.classList.contains('show') ? '▲' : '▼';
+        }
+    </script>
+</body>
+</html>

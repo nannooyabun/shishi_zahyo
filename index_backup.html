@@ -1,0 +1,4553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>ゲーム座標管理システム</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+            overscroll-behavior: none;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 20px;
+            }
+            .header p {
+                font-size: 13px;
+            }
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 30% 70%;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        /* レイアウト: 左カラムと右カラム */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 右カラム内の下部2カラム並列セクション */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* レスポンシブ: スマホでは1カラムに */
+        @media (max-width: 768px) {
+            .main-content {
+                display: flex;
+                flex-direction: column;
+                padding: 10px;
+            }
+            .bottom-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* タブレット縦向き: グループ管理と保存済み座標を1カラムに */
+        @media (max-aspect-ratio: 1/1) and (min-width: 769px) {
+            .bottom-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        .section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 768px) {
+            .section {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+        }
+        .section h2 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        /* 操作ガイドスタイル */
+        .guide-section {
+            background: #f8f9fa;
+        }
+        .guide-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            padding: 0;
+            overflow: hidden;
+        }
+        .guide-item summary {
+            cursor: pointer;
+            padding: 12px 15px;
+            font-weight: bold;
+            color: #667eea;
+            user-select: none;
+            list-style: none;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transition: all 0.2s;
+        }
+        .guide-item summary::-webkit-details-marker {
+            display: none;
+        }
+        .guide-item summary:hover {
+            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+        }
+        .guide-item summary::before {
+            content: '▶';
+            display: inline-block;
+            margin-right: 8px;
+            transition: transform 0.2s;
+        }
+        .guide-item[open] summary::before {
+            transform: rotate(90deg);
+        }
+        .guide-content {
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+            line-height: 1.6;
+        }
+        .guide-content p {
+            margin-bottom: 10px;
+        }
+        .guide-content ul, .guide-content ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+        .guide-content li {
+            margin-bottom: 5px;
+        }
+        .guide-content code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #d63384;
+        }
+        .guide-content strong {
+            color: #495057;
+        }
+        @media (max-width: 768px) {
+            .guide-content {
+                padding: 12px;
+                font-size: 14px;
+            }
+        }
+        /* 全画面表示スタイル */
+        .fullscreen-container {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            overflow: hidden;
+            background: white;
+            margin: 0;
+            padding: 0;
+        }
+        .fullscreen-container .section {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+        }
+        .fullscreen-container canvas {
+            flex: 1;
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+        }
+        .fullscreen-container .map-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .fullscreen-container .mode-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .fullscreen-container .grid-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        /* フローティングコントロール（通常表示時） */
+        .map-section {
+            position: relative;
+        }
+        .floating-controls .map-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .floating-controls .mode-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .floating-controls .grid-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        @media (max-width: 768px) {
+            textarea {
+                font-size: 16px;
+                min-height: 150px;
+            }
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="date"] {
+            font-size: 13px;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        @media (max-width: 768px) {
+            input[type="text"],
+            input[type="number"],
+            input[type="date"] {
+                font-size: 16px;
+                min-height: 44px;
+            }
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 8px;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        @media (max-width: 768px) {
+            button {
+                padding: 12px 20px;
+                font-size: 16px;
+                min-height: 44px;
+            }
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button.secondary {
+            background: linear-gradient(135deg, #78909c 0%, #546e7a 100%);
+        }
+        .mode-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .mode-btn {
+            flex: 1;
+            margin: 0;
+        }
+        .mode-btn.active {
+            background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+        }
+        #mapCanvas {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: crosshair;
+            background: #f5f5f5;
+            touch-action: none;
+        }
+        @media (max-width: 768px) {
+            #mapCanvas {
+                height: 400px;
+            }
+        }
+        @media (min-width: 769px) and (max-aspect-ratio: 1/1) {
+            #mapCanvas {
+                height: 500px;
+            }
+        }
+        .map-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .map-controls button {
+            flex: 1;
+            min-width: 120px;
+            margin: 0;
+        }
+        @media (max-width: 768px) {
+            .map-controls {
+                gap: 6px;
+            }
+            .map-controls button {
+                min-width: 100px;
+                font-size: 13px;
+                padding: 10px 12px;
+            }
+        }
+        .obstacle-btn {
+            margin: 4px 0;
+        }
+        .obstacle-btn.selected {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .stat-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .coordinate-item, .obstacle-item {
+            background: white;
+            padding: 10px;
+            margin: 6px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+        @media (max-width: 768px) {
+            .coordinate-item, .obstacle-item {
+                padding: 12px;
+                font-size: 14px;
+                min-height: 50px;
+            }
+        }
+        .coordinate-item input[type="checkbox"],
+        .obstacle-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .coordinate-item input[type="checkbox"],
+            .obstacle-item input[type="checkbox"] {
+                width: 24px;
+                height: 24px;
+                margin-right: 12px;
+            }
+        }
+        .item-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .item-actions button {
+            width: auto;
+            padding: 6px 12px;
+            margin: 0;
+            font-size: 12px;
+            min-width: auto;
+        }
+        @media (max-width: 768px) {
+            .item-actions button {
+                padding: 8px 14px;
+                font-size: 14px;
+            }
+        }
+        .grid-display {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .grid-display label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .grid-display input[type="radio"] {
+            margin-right: 6px;
+        }
+        .grid-display label:has(input:checked) {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .toggle-switch input[type="checkbox"] {
+            width: 50px;
+            height: 26px;
+            appearance: none;
+            background: #ccc;
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .toggle-switch input[type="checkbox"]:checked {
+            background: #4caf50;
+        }
+        .toggle-switch input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+        }
+        .toggle-switch input[type="checkbox"]:checked::before {
+            left: 26px;
+        }
+        .custom-obstacle-form {
+            background: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .custom-obstacle-form input,
+        .custom-obstacle-form select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        .color-picker {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .color-option.selected {
+            border-color: #333;
+            transform: scale(1.1);
+        }
+        .custom-obstacle-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            margin: 4px 0;
+        }
+        .custom-obstacle-display .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid #999;
+        }
+        .parse-result-item {
+            background: white;
+            padding: 10px;
+            margin: 6px 0;
+            border-radius: 6px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .parse-result-item input {
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .parse-result-item .name-input {
+            flex: 2;
+        }
+        .parse-result-item .coord-input {
+            flex: 1;
+            width: 60px;
+        }
+        .filter-controls {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        .filter-controls input,
+        .filter-controls select {
+            flex: 1;
+            min-width: 120px;
+        }
+        .temp-message {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
+            text-align: center;
+            color: #856404;
+        }
+        .coordinate-name-link {
+            cursor: pointer;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .coordinate-name-link:hover {
+            text-decoration: underline;
+        }
+        .adjust-mode-panel {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .adjust-mode-panel input {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            border: 2px solid #2196f3;
+            border-radius: 4px;
+        }
+        /* グループアコーディオンスタイル */
+        .group-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 10px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+        }
+        .group-item:hover {
+            border-color: #667eea;
+        }
+        .group-item.expanded {
+            background-color: #f9fbff;
+            border-color: #667eea;
+        }
+        .group-header {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            padding: 12px;
+            background: #e3f2fd;
+            border-radius: 6px;
+            margin-bottom: 0;
+        }
+        .group-expand-icon {
+            margin-right: 8px;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        .group-item.expanded .group-expand-icon {
+            transform: rotate(90deg);
+        }
+        .group-coordinates {
+            display: none;
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #f0f7ff;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .group-item.expanded .group-coordinates {
+            display: block;
+        }
+        .group-coord-item {
+            background: white;
+            padding: 8px 12px;
+            margin: 6px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            color: #667eea;
+            text-decoration: none;
+            border: 1px solid #e3f2fd;
+        }
+        .group-coord-item:hover {
+            background-color: #e3f2fd;
+            border-color: #667eea;
+        }
+        .no-results-message {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-style: italic;
+        }
+        
+        /* フローティングボタン - ドロップダウンメニュー */
+        .mode-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .mode-dropdown-btn {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            user-select: none;
+        }
+        
+        .mode-dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: white;
+            min-width: 160px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            z-index: 101;
+            overflow: hidden;
+        }
+        
+        .mode-dropdown-content.show {
+            display: block;
+        }
+        
+        .mode-dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .mode-dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .mode-dropdown-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .mode-dropdown-item.active {
+            background-color: #e3f2fd;
+            font-weight: bold;
+        }
+        
+        /* ズームボタン縦並び */
+        .zoom-controls {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .zoom-controls button {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            margin: 0;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-size: 20px;
+        }
+        
+        .zoom-controls button:hover {
+            transform: scale(1.1);
+        }
+        
+        /* フィルタ表示エリア */
+        .active-filters-display {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .active-filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #856404;
+        }
+        
+        .filter-count {
+            font-size: 13px;
+            color: #856404;
+        }
+        
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            border: 1px solid #ffc107;
+        }
+        
+        .filter-tag button {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            width: auto;
+            margin: 0;
+            min-height: auto;
+            line-height: 1;
+        }
+        
+        .filter-tag button:hover {
+            transform: scale(1.2);
+            box-shadow: none;
+        }
+        
+        .clear-all-filters-btn {
+            background: #dc3545 !important;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            margin: 0;
+            width: auto;
+            min-height: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .filter-tag {
+                font-size: 12px;
+                padding: 5px 10px;
+            }
+            
+            .zoom-controls {
+                right: 10px;
+            }
+            
+            .zoom-controls button {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+
+        /* グループ管理と保存済み座標の横並び */
+        .bottom-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .bottom-split {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ ゲーム座標管理システム</h1>
+            <p>一級地帯 X200-439 Y760-999 の座標管理</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- 左カラム -->
+            <div class="left-column">
+                <!-- 障害物管理 -->
+                <div class="section obstacle-section">
+                    <h2>🚧 障害物管理</h2>
+                    <div style="margin-bottom: 12px;">
+                        <button onclick="selectObstacleType('rock')" class="obstacle-btn" id="obstacleRock">🪨 岩</button>
+                        <div id="customObstacleButtons"></div>
+                        <button onclick="showCustomObstacleForm()" style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); margin-top: 8px;">➕ カスタム障害物を作成</button>
+                    </div>
+
+                    <div id="customObstacleFormContainer" style="display: none;">
+                        <div class="custom-obstacle-form">
+                            <h3>カスタム障害物作成</h3>
+                            <input type="text" id="customObstacleName" placeholder="障害物名(例:陣屋)">
+                            <div>
+                                <label>配置方法:</label>
+                                <select id="customObstaclePlacementType">
+                                    <option value="tap">タップ配置</option>
+                                    <option value="single">単一セル</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>色を選択:</label>
+                                <div class="color-picker" id="colorPicker"></div>
+                                <label style="margin-top: 10px;">または任意の色を指定:</label>
+                                <input type="color" id="customColorPicker" value="#FF6B6B" style="width: 100%; height: 40px; cursor: pointer;">
+                            </div>
+                            <button onclick="createCustomObstacle()" id="createObstacleBtn">テンプレート作成</button>
+                            <button onclick="cancelCustomObstacleForm()" class="secondary">キャンセル</button>
+                            <div id="tempShapeMessage" style="display: none;" class="temp-message">
+                                形状を入力し終わったら、再度テンプレート作成ボタンを押してください
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="obstacleList" style="max-height: 200px; overflow-y: auto; margin-top: 12px;"></div>
+                    <button onclick="deleteSelectedObstacles()" style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); margin-top: 8px;">🗑️ 選択削除</button>
+                </div>
+
+                <!-- 統計 -->
+                <div class="section stats-section">
+                    <h2>📊 統計情報</h2>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="coordCount">0</div>
+                            <div class="stat-label">座標数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="obstacleCount">0</div>
+                            <div class="stat-label">障害物</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="groupCount">0</div>
+                            <div class="stat-label">グループ</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="selectedCount">0</div>
+                            <div class="stat-label">選択中</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="occupancyRate">0%</div>
+                            <div class="stat-label">居住範囲占有率</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作ガイド -->
+                <div class="section guide-section">
+                    <h2>📖 操作ガイド</h2>
+
+                    <!-- 基本操作 -->
+                    <details class="guide-item">
+                        <summary>🖱️ マップ操作</summary>
+                        <div class="guide-content">
+                            <p><strong>🔍 拡大縮小:</strong> マウスホイール</p>
+                            <p><strong>✋ パン（スクロール）:</strong></p>
+                            <ul>
+                                <li>閲覧モード: マウスドラッグ</li>
+                                <li>入力・削除・調整モード: スペースキー+ドラッグ</li>
+                                <li>スマホ: 二本指でスライド</li>
+                            </ul>
+                            <p><strong>🏠 一級地帯へジャンプ:</strong> マップ右側の🏠ボタン</p>
+                            <p><strong>🖼️ 全画面表示:</strong> マップ下部の全画面表示ボタン</p>
+                        </div>
+                    </details>
+
+                    <!-- 座標入力 -->
+                    <details class="guide-item">
+                        <summary>📝 座標入力</summary>
+                        <div class="guide-content">
+                            <p><strong>入力形式:</strong></p>
+                            <ul>
+                                <li>基本: <code>名前 @X座標 Y座標</code></li>
+                                <li>例: <code>城A @320 850</code></li>
+                                <li>連続入力: 改行、カンマ、または任意の区切り文字で区切る</li>
+                            </ul>
+                            <p><strong>グループ作成:</strong> グループ名を入力すると自動的にグループが作成されます</p>
+                            <p><strong>手順:</strong></p>
+                            <ol>
+                                <li>座標入力欄にデータを入力</li>
+                                <li>「📥 座標を解析」ボタンをクリック</li>
+                                <li>解析結果を確認・修正</li>
+                                <li>「💾 座標を保存」ボタンで保存</li>
+                            </ol>
+                        </div>
+                    </details>
+
+                    <!-- 障害物入力 -->
+                    <details class="guide-item">
+                        <summary>🚧 障害物入力</summary>
+                        <div class="guide-content">
+                            <p><strong>事前準備:</strong></p>
+                            <ol>
+                                <li>障害物管理パネルで障害物を選択</li>
+                                <li>マップ上部で「✏️ 入力」モードを選択</li>
+                            </ol>
+                            <p><strong>入力方法:</strong></p>
+                            <ul>
+                                <li><strong>単一セル:</strong> マップ上をクリック</li>
+                                <li><strong>複数セル:</strong> ドラッグして範囲選択</li>
+                                <li><strong>スクロール:</strong> スペースキー+ドラッグ</li>
+                            </ul>
+                            <p><strong>カスタム障害物:</strong> 「➕ カスタム障害物を作成」から色や名前を自由に設定可能</p>
+                            <p><strong>削除:</strong> 「🗑️ 削除」モードで障害物をクリックまたはドラッグ</p>
+                        </div>
+                    </details>
+
+                    <!-- グループ管理 -->
+                    <details class="guide-item">
+                        <summary>📦 グループ管理</summary>
+                        <div class="guide-content">
+                            <p><strong>グループ作成:</strong></p>
+                            <ul>
+                                <li>グループ名を入力して「➕ グループを作成」</li>
+                                <li>または座標入力時にグループ名を指定</li>
+                            </ul>
+                            <p><strong>座標の追加:</strong></p>
+                            <ol>
+                                <li>保存済み座標リストで座標を選択</li>
+                                <li>グループの「➕追加」ボタンをクリック</li>
+                            </ol>
+                            <p><strong>グループ内の座標を表示:</strong> グループ名をクリックして展開</p>
+                            <p><strong>グループ内の座標を選択:</strong> 「選択」ボタンで一括選択</p>
+                        </div>
+                    </details>
+
+                    <!-- 座標調整 -->
+                    <details class="guide-item">
+                        <summary>🔧 座標調整</summary>
+                        <div class="guide-content">
+                            <p><strong>手順:</strong></p>
+                            <ol>
+                                <li>マップ上部で「🔧 座標調整」モードを選択</li>
+                                <li>調整したい座標をドラッグ</li>
+                                <li>グループ名を入力</li>
+                                <li>「💾 調整座標を保存」で新しいグループとして保存</li>
+                            </ol>
+                            <p><strong>注意:</strong> 元の座標は変更されず、調整後の座標が新規グループとして保存されます</p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- 右カラム -->
+            <div class="right-column">
+                <!-- マップ表示 -->
+                <div class="section map-section floating-controls">
+                    <h2>🗺️ マップ表示</h2>
+
+                    <!-- グリッド表示切替 -->
+                    <div class="grid-display">
+                        <label>
+                            <input type="radio" name="gridType" value="square" checked onchange="changeGridType('square')">
+                            ⬜ 正方形
+                        </label>
+                        <label>
+                            <input type="radio" name="gridType" value="diamond" onchange="changeGridType('diamond')">
+                            🔷 ひし形
+                        </label>
+                    </div>
+
+                    <!-- モード切替（ドロップダウン） -->
+                    <div class="mode-toggle">
+                        <div class="mode-dropdown">
+                            <div class="mode-dropdown-btn" onclick="toggleModeDropdown()">
+                                <span id="currentModeText">👀 閲覧</span>
+                                <span>▼</span>
+                            </div>
+                            <div class="mode-dropdown-content" id="modeDropdownContent">
+                                <div class="mode-dropdown-item active" onclick="selectMode('view', '👀 閲覧')">👀 閲覧</div>
+                                <div class="mode-dropdown-item" onclick="selectMode('input', '✏️ 入力')">✏️ 入力</div>
+                                <div class="mode-dropdown-item" onclick="selectMode('adjust', '🔧 座標調整')">🔧 座標調整</div>
+                                <div class="mode-dropdown-item" onclick="selectMode('delete', '🗑️ 削除')">🗑️ 削除</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 座標調整モードパネル -->
+                    <div id="adjustModePanel" class="adjust-mode-panel" style="display: none;">
+                        <strong>座標調整モード</strong>
+                        <input type="text" id="adjustGroupName" placeholder="グループ名を入力">
+                        <button onclick="saveAdjustedGroup()">💾 調整座標を保存</button>
+                        <button onclick="cancelAdjustMode()" class="secondary">キャンセル</button>
+                    </div>
+
+                    <canvas id="mapCanvas"></canvas>
+
+                    <!-- ズームボタン（縦並び・右側中央） -->
+                    <div class="zoom-controls">
+                        <button onclick="zoomIn()" title="拡大">🔍</button>
+                        <button onclick="zoomOut()" title="縮小">🔎</button>
+                        <button onclick="jumpToPrimeZone()" title="一級地帯へ" style="background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);">🏠</button>
+                    </div>
+
+                    <!-- 全画面表示ボタン（左下） -->
+                    <div style="position: absolute; left: 20px; bottom: 60px; z-index: 100;">
+                        <button onclick="toggleFullscreen()" id="fullscreenBtn">🖼️ 全画面表示</button>
+                    </div>
+
+                    <!-- マップ中央座標表示（下側中央） - クリックで座標ジャンプダイアログを表示 -->
+                    <div id="centerCoordDisplay" onclick="openJumpDialog()" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(0, 0, 0, 0.75); color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; cursor: pointer; transition: background 0.2s;"
+                         onmouseover="this.style.background='rgba(33, 150, 243, 0.9)'"
+                         onmouseout="this.style.background='rgba(0, 0, 0, 0.75)'">
+                        中央: @0 0
+                    </div>
+
+                    <!-- 座標ジャンプダイアログ -->
+                    <div id="jumpDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center;">
+                        <div style="background: white; border-radius: 12px; padding: 20px; max-width: 400px; width: 90%;">
+                            <h3 style="margin-top: 0;">📍 座標にジャンプ</h3>
+                            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">X座標:</label>
+                                    <input type="number" id="jumpDialogX" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">Y座標:</label>
+                                    <input type="number" id="jumpDialogY" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="executeJump()" style="flex: 1; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">🚀 ジャンプ</button>
+                                <button onclick="closeJumpDialog()" class="secondary" style="flex: 1;">キャンセル</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 座標入力 -->
+                <div class="section coord-input-section">
+                    <h2>📝 座標入力</h2>
+
+                    <!-- グループ設定 -->
+                    <label style="font-weight: bold; margin-bottom: 8px; display: block;">グループ設定(任意・空欄可):</label>
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: block; margin-bottom: 4px; cursor: pointer;">
+                            <input type="radio" name="groupMode" value="none" id="groupModeNone" checked onchange="toggleGroupMode()">
+                            グループに追加しない
+                        </label>
+                        <label style="display: block; margin-bottom: 4px; cursor: pointer;">
+                            <input type="radio" name="groupMode" value="new" id="groupModeNew" onchange="toggleGroupMode()">
+                            新規グループを作成
+                        </label>
+                        <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                            <input type="radio" name="groupMode" value="existing" id="groupModeExisting" onchange="toggleGroupMode()">
+                            既存グループに追加
+                        </label>
+                    </div>
+
+                    <!-- 新規グループ名入力 -->
+                    <div id="newGroupNameInput" style="display: none; margin-bottom: 8px;">
+                        <input type="text" id="coordInputGroupName" placeholder="新しいグループ名を入力" style="width: 100%; padding: 8px;">
+                    </div>
+
+                    <!-- 既存グループ選択 -->
+                    <div id="existingGroupSelect" style="display: none; margin-bottom: 8px;">
+                        <select id="coordInputGroupSelect" style="width: 100%; padding: 8px;">
+                            <option value="">グループを選択してください</option>
+                        </select>
+                    </div>
+
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        区切り文字(任意・空欄可):
+                        <span onclick="showDelimiterHelp()" style="cursor: pointer; background: #2196f3; color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">?</span>
+                    </label>
+                    <input type="text" id="customDelimiter" placeholder="例: | または : など" style="width: 100%; margin-bottom: 8px;">
+                    <textarea id="coordInput" placeholder="座標を入力してください&#10;例:&#10;城A @320 850&#10;城B @350 870&#10;&#10;または連続入力:&#10;なんの親分@342 828、菊奴: @367 771、杜若奏子: @398 786"></textarea>
+                    <button onclick="parseCoordinates()">📥 座標を解析</button>
+                </div>
+
+                <!-- 解析結果 -->
+                <div class="section" id="parseResultSection" style="display: none;">
+                    <h2>✅ 解析結果(修正可能)</h2>
+                    <div id="parseResult" style="max-height: 300px; overflow-y: auto;"></div>
+                    <button onclick="saveCoordinates()">💾 座標を保存</button>
+                    <button onclick="clearParseResult()" class="secondary">🗑️ 解析結果をクリア</button>
+                </div>
+
+                <!-- 下部の2カラム並列セクション -->
+                <div class="bottom-row">
+                    <!-- グループ管理 -->
+                    <div class="section group-section">
+                        <h2>📦 グループ管理</h2>
+
+                        <!-- グループ作成ボタン -->
+                        <button onclick="createGroupWithPrompt()" style="width: 100%; margin-bottom: 8px;">➕ グループを作成</button>
+
+                        <!-- グループ検索・ソート -->
+                        <div class="filter-controls" style="margin-bottom: 8px;">
+                            <input type="text" id="groupNameFilter" placeholder="グループ名で検索" onkeyup="applyGroupFilters()" style="width: 100%;">
+                        </div>
+                        <div class="filter-controls" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <select id="groupSortBy" onchange="applyGroupFilters()" style="flex: 1;">
+                                <option value="date-desc">作成日時（新しい順）</option>
+                                <option value="date-asc">作成日時（古い順）</option>
+                                <option value="name-asc">名前（A→Z）</option>
+                                <option value="name-desc">名前（Z→A）</option>
+                                <option value="count-desc">登録件数（多い順）</option>
+                                <option value="count-asc">登録件数（少ない順）</option>
+                            </select>
+                        </div>
+
+                        <div id="groupList" style="max-height: 400px; overflow-y: auto; margin-top: 12px;"></div>
+                    </div>
+
+                    <!-- 座標管理 -->
+                    <div class="section saved-coords-section">
+                        <h2>📋 保存済み座標</h2>
+
+                        <!-- フィルター・ソート -->
+                        <div class="filter-controls">
+                            <input type="text" id="nameFilter" placeholder="名称検索" onkeyup="applyFilters()" style="width: 100%;">
+                        </div>
+                        <div class="filter-controls" style="display: flex; gap: 10px; align-items: center;">
+                            <input type="date" id="dateFilterFrom" onchange="applyFilters()" style="flex: 1;">
+                            <span>から</span>
+                            <input type="date" id="dateFilterTo" onchange="applyFilters()" style="flex: 1;">
+                        </div>
+                        <div class="filter-controls" style="display: flex; gap: 5px; margin-top: 5px;">
+                            <button onclick="setDateFilter('today')" class="secondary" style="flex: 1; padding: 6px;">今日</button>
+                            <button onclick="setDateFilter('week')" class="secondary" style="flex: 1; padding: 6px;">今週</button>
+                            <button onclick="setDateFilter('month')" class="secondary" style="flex: 1; padding: 6px;">今月</button>
+                            <button onclick="setDateFilter('year')" class="secondary" style="flex: 1; padding: 6px;">今年</button>
+                        </div>
+                        <div class="filter-controls">
+                            <select id="sortBy" onchange="applyFilters()">
+                                <option value="date-desc">登録日時(新→古)</option>
+                                <option value="date-asc">登録日時(古→新)</option>
+                                <option value="name-asc">名前(A→Z)</option>
+                                <option value="name-desc">名前(Z→A)</option>
+                                <option value="x-asc">X座標(小→大)</option>
+                                <option value="x-desc">X座標(大→小)</option>
+                                <option value="y-asc">Y座標(小→大)</option>
+                                <option value="y-desc">Y座標(大→小)</option>
+                            </select>
+                            <button onclick="clearFilters()" class="secondary" style="width: auto; padding: 8px 16px; margin: 0;">フィルタ解除</button>
+                        </div>
+
+                        <div class="toggle-switch">
+                            <span>一括選択モード</span>
+                            <input type="checkbox" id="rangeSelectMode" onchange="toggleRangeSelectMode()">
+                            <span style="font-size: 12px; color: #666; margin-left: 8px;">（ON時: 範囲選択が可能）</span>
+                        </div>
+
+                        <!-- フィルタ表示エリア -->
+                        <div id="activeFiltersDisplay" class="active-filters-display" style="display: none;"></div>
+
+                        <!-- 選択件数表示 -->
+                        <div id="selectedCountDisplay" style="background: #e3f2fd; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-weight: bold; color: #1976d2; display: none;">
+                            選択中: <span id="selectedCountNumber">0</span>件
+                        </div>
+
+                        <div id="coordinateList" style="max-height: 300px; overflow-y: auto;"></div>
+                        <div class="map-controls" style="margin-top: 12px;">
+                            <button onclick="showSelectedCoordinatesOnly()" class="secondary">👁️ 選択済み座標のみ表示</button>
+                            <button onclick="showAllCoordinates()" class="secondary">👁️ すべて表示</button>
+                            <button onclick="deleteSelectedCoordinates()" style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️ 選択削除</button>
+                        </div>
+                        <div class="map-controls" style="margin-top: 8px;">
+                            <button onclick="copyDataToClipboard()" style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); flex: 1;">📋 クリップボードにコピー</button>
+                            <button onclick="exportToCSV()" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); flex: 1;">📊 CSV出力</button>
+                        </div>
+                        <div class="map-controls" style="margin-top: 8px;">
+                            <button onclick="createGroupWithPrompt()" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); width: 100%;">📦 選択座標でグループを作成</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // Firebase 初期化
+        // ========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoN96jdkx9kVm0mfj50n-5WzZOkLzGJVI",
+            authDomain: "shishi-zahyo.firebaseapp.com",
+            databaseURL: "https://shishi-zahyo-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "shishi-zahyo",
+            storageBucket: "shishi-zahyo.firebasestorage.app",
+            messagingSenderId: "380340912647",
+            appId: "1:380340912647:web:d20e62f51ed9dc590560a2",
+            measurementId: "G-NQ0482B0YC"
+        };
+
+        // Firebase初期化
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Firebaseデータ参照
+        const coordinatesRef = database.ref('coordinates');
+        const groupsRef = database.ref('groups');
+        const obstaclesRef = database.ref('obstacles');
+
+        // ========================================
+        // グローバル変数
+        // ========================================
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // ゲーム全体の座標範囲
+        const worldBounds = {
+            minX: 0,
+            maxX: 700,
+            minY: 0,
+            maxY: 1900
+        };
+        
+        // 一級地帯の範囲
+        const primeZone = {
+            minX: 200,
+            maxX: 439,
+            minY: 760,
+            maxY: 999
+        };
+        
+        // 城の固定データ
+        const castles = [
+            { name: '二条城', x: 320, y: 880 },
+            { name: '雑賀城', x: 416, y: 785 },
+            { name: '後瀬山城', x: 220, y: 860 },
+            { name: '伊賀上野城', x: 388, y: 949 }
+        ];
+        
+        // 描画設定
+        let scale = 5;
+        let offsetX = (primeZone.minX + primeZone.maxX) / 2;
+        let offsetY = (primeZone.minY + primeZone.maxY) / 2;
+        let gridType = 'square';
+        
+        // データ
+        let parsedCoordinates = [];
+        let savedCoordinates = [];
+        let selectedCoordinateIds = new Set();
+        let hiddenCoordinateIds = new Set();
+        let duplicateCoordinateIds = new Set();
+        let coordinateGroups = [];
+        let filteredCoordinates = [];
+        let obstacles = [];
+        let selectedObstacleIds = new Set();
+        let customObstacles = [];
+        
+        // UI状態
+        let currentMode = 'view';
+        let selectedObstacleType = null;
+        let tempSelection = new Set();
+        let isCreatingCustomObstacle = false;
+        let customObstacleInProgress = null;
+        let rangeSelectMode = false;
+        let isFilterActive = false;
+        let rangeSelectStart = null;
+        let expandedGroupId = null;
+        let groupFilterActive = false;
+        
+        // ドラッグ選択用
+        let isDragging = false;
+        let dragStartCell = null;
+        let dragCurrentCell = null;
+        
+        // 座標調整モード用
+        let adjustMode = {
+            active: false,
+            groupName: '',
+            coordinates: []
+        };
+        let draggedCoordinate = null;
+        
+        // 障害物の名前
+        const obstacleNames = {
+            'rock': '🪨 岩'
+        };
+        
+        // タッチ操作用
+        let touches = [];
+        let lastTouchDistance = 0;
+        let isPanning = false;
+        let lastPanPos = null;
+        let isSpaceKeyPressed = false; // スペースキー押下状態
+
+        // カスタム障害物用の色パレット
+        const colorPalette = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+            '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#AAB7B8',
+            '#FF8ED4', '#00D2FF', '#3F51B5', '#E91E63', '#009688'
+        ];
+
+        // ========================================
+        // Firebase データ管理関数
+        // ========================================
+
+        // Firebaseからすべてのデータを読み込み（初回ロード）
+        function loadFromFirebase() {
+            console.log('Firebaseからデータを読み込み中...');
+
+            // 座標データの読み込みとリアルタイム同期
+            coordinatesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    savedCoordinates = Object.keys(data).map(key => ({
+                        ...data[key],
+                        id: data[key].id || key
+                    }));
+                    console.log(`${savedCoordinates.length}件の座標を読み込みました`);
+                    updateCoordinatesList();
+
+                    // 確実に再描画されるようrequestAnimationFrameを使用
+                    requestAnimationFrame(() => {
+                        drawMap();
+                    });
+
+                    updateStats();
+                } else {
+                    console.log('座標データがありません');
+                }
+            });
+
+            // グループデータの読み込みとリアルタイム同期
+            groupsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    coordinateGroups = Object.keys(data).map(key => ({
+                        ...data[key],
+                        id: data[key].id || key,
+                        coordinateIds: data[key].coordinateIds || []  // coordinateIdsが存在しない場合は空配列
+                    }));
+                    console.log(`${coordinateGroups.length}件のグループを読み込みました`);
+                    updateGroupsList();
+                } else {
+                    console.log('グループデータがありません');
+                    // 初回のみデフォルトグループを作成
+                    if (coordinateGroups.length === 0) {
+                        createDefaultGroup();
+                    }
+                }
+            });
+
+            // 障害物データの読み込みとリアルタイム同期
+            obstaclesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const obstacleData = data.obstacles || [];
+                    const customObstacleData = data.customObstacles || [];
+
+                    obstacles = obstacleData;
+                    customObstacles = customObstacleData;
+
+                    console.log(`${obstacles.length}件の障害物を読み込みました`);
+                    updateObstaclesList();
+                    updateCustomObstacleButtons();
+
+                    // 確実に再描画されるようrequestAnimationFrameを使用
+                    requestAnimationFrame(() => {
+                        drawMap();
+                    });
+                } else {
+                    console.log('障害物データがありません');
+                }
+            });
+        }
+
+        // 座標をFirebaseに保存
+        function saveCoordinateToFirebase(coordinate) {
+            const coordId = coordinate.id.toString();
+            return coordinatesRef.child(coordId).set(coordinate);
+        }
+
+        // 座標をFirebaseから削除
+        function deleteCoordinateFromFirebase(coordId) {
+            return coordinatesRef.child(coordId.toString()).remove();
+        }
+
+        // グループをFirebaseに保存
+        function saveGroupToFirebase(group) {
+            const groupId = group.id.toString();
+            // coordinateIdsが空配列の場合、空配列として明示的に保存
+            const groupData = {
+                ...group,
+                coordinateIds: group.coordinateIds || []
+            };
+            return groupsRef.child(groupId).set(groupData);
+        }
+
+        // グループをFirebaseから削除
+        function deleteGroupFromFirebase(groupId) {
+            return groupsRef.child(groupId.toString()).remove();
+        }
+
+        // すべてのグループをFirebaseに保存
+        function saveAllGroupsToFirebase() {
+            const groupsData = {};
+            coordinateGroups.forEach(group => {
+                groupsData[group.id] = group;
+            });
+            return groupsRef.set(groupsData);
+        }
+
+        // 障害物をFirebaseに保存
+        function saveObstaclesToFirebase() {
+            return obstaclesRef.set({
+                obstacles: obstacles,
+                customObstacles: customObstacles
+            });
+        }
+
+        // ========================================
+        // 初期化
+        // ========================================
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+            
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+            // スペースキーでのパン操作
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+
+            initColorPicker();
+
+            // 修正3: ローカルタイムゾーンで日付を設定
+            const today = new Date();
+            const dateString = getLocalDateString(today);
+            document.getElementById('dateFilterTo').value = dateString;
+
+            // Firebaseからデータを読み込み（デフォルトグループは読み込み時に必要に応じて作成）
+            loadFromFirebase();
+
+            drawMap();
+            updateStats();
+        }
+        
+        // 修正3: ローカルタイムゾーンで日付文字列を取得
+        function getLocalDateString(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // デフォルトグループの作成
+        function createDefaultGroup() {
+            const defaultGroup = {
+                id: 'default',
+                name: '登録済み座標',
+                coordinateIds: [],
+                createdAt: new Date().toISOString()
+            };
+            coordinateGroups.push(defaultGroup);
+
+            // Firebaseに保存
+            saveGroupToFirebase(defaultGroup).catch(error => {
+                console.error('デフォルトグループの保存エラー:', error);
+            });
+
+            updateGroupsList();
+        }
+        
+        // 日付フィルターのショートカット (修正3対応)
+        function setDateFilter(period) {
+            const today = new Date();
+            const dateFilterFrom = document.getElementById('dateFilterFrom');
+            const dateFilterTo = document.getElementById('dateFilterTo');
+            
+            // 終了日は常に今日
+            dateFilterTo.value = getLocalDateString(today);
+            
+            let startDate = new Date();
+            switch(period) {
+                case 'today':
+                    startDate = new Date(today);
+                    break;
+                case 'week':
+                    startDate = new Date(today);
+                    startDate.setDate(today.getDate() - today.getDay());
+                    break;
+                case 'month':
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    break;
+                case 'year':
+                    startDate = new Date(today.getFullYear(), 0, 1);
+                    break;
+            }
+            
+            dateFilterFrom.value = getLocalDateString(startDate);
+            applyFilters();
+        }
+        
+        // 特定の日付で絞り込み
+        function filterByDate(dateISO) {
+            const dateFilterFrom = document.getElementById('dateFilterFrom');
+            const dateFilterTo = document.getElementById('dateFilterTo');
+            
+            dateFilterFrom.value = dateISO;
+            dateFilterTo.value = dateISO;
+            applyFilters();
+        }
+        
+        // 色ピッカーの初期化
+        function initColorPicker() {
+            const picker = document.getElementById('colorPicker');
+            picker.innerHTML = '';
+            colorPalette.forEach((color, index) => {
+                const div = document.createElement('div');
+                div.className = 'color-option' + (index === 0 ? ' selected' : '');
+                div.style.backgroundColor = color;
+                div.onclick = () => selectColor(div, color);
+                picker.appendChild(div);
+            });
+        }
+        
+        function selectColor(element, color) {
+            document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+        
+        function getSelectedColor() {
+            const selected = document.querySelector('.color-option.selected');
+            if (selected) {
+                return selected.style.backgroundColor;
+            }
+            const customPicker = document.getElementById('customColorPicker');
+            if (customPicker) {
+                return customPicker.value;
+            }
+            return colorPalette[0];
+        }
+        
+        // キャンバスのリサイズ (修正2対応)
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            
+            const dpr = window.devicePixelRatio || 1;
+            
+            // 修正2: 全画面表示時は画面サイズを使用
+            let displayWidth, displayHeight;
+            if (document.fullscreenElement) {
+                displayWidth = window.innerWidth;
+                displayHeight = window.innerHeight;
+            } else {
+                displayWidth = rect.width - 40;
+                displayHeight = Math.min(600, window.innerHeight * 0.5);
+            }
+            
+            canvas.width = displayWidth * dpr;
+            canvas.height = displayHeight * dpr;
+            
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+            
+            ctx.scale(dpr, dpr);
+            
+            drawMap();
+        }
+        
+        // 座標変換(ワールド座標→スクリーン座標)
+        function worldToScreen(x, y) {
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+            
+            if (gridType === 'diamond') {
+                const dx = x - offsetX;
+                const dy = y - offsetY;
+                
+                const screenX = width / 2 + (dx + dy) * scale / 2;
+                const screenY = height / 2 + (dx - dy) * scale * 0.876 / 2;
+                
+                return { x: screenX, y: screenY };
+            } else {
+                return {
+                    x: width / 2 + (y - offsetY) * scale,
+                    y: height / 2 + (x - offsetX) * scale
+                };
+            }
+        }
+        
+        // 座標変換(スクリーン座標→ワールド座標)
+        function screenToWorld(screenX, screenY) {
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+            
+            if (gridType === 'diamond') {
+                const sx = (screenX - width / 2) / scale * 2;
+                const sy = (screenY - height / 2) / scale / 0.876 * 2;
+                
+                const worldX = offsetX + (sx + sy) / 2;
+                const worldY = offsetY + (sx - sy) / 2;
+                
+                return {
+                    x: Math.round(worldX),
+                    y: Math.round(worldY)
+                };
+            } else {
+                return {
+                    x: Math.round(offsetX + (screenY - height / 2) / scale),
+                    y: Math.round(offsetY + (screenX - width / 2) / scale)
+                };
+            }
+        }
+        
+        // グリッドタイプの変更
+        function changeGridType(type) {
+            gridType = type;
+            resizeCanvas();
+        }
+        
+        // ドロップダウンメニューのトグル
+        function toggleModeDropdown() {
+            const dropdown = document.getElementById('modeDropdownContent');
+            dropdown.classList.toggle('show');
+        }
+        
+        // モード選択
+        function selectMode(mode, text) {
+            // ドロップダウンを閉じる
+            document.getElementById('modeDropdownContent').classList.remove('show');
+            
+            // 現在のモードテキストを更新
+            document.getElementById('currentModeText').textContent = text;
+            
+            // アクティブ状態を更新
+            document.querySelectorAll('.mode-dropdown-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // モードを変更
+            changeModeInternal(mode);
+        }
+        
+        // 内部的にモードを変更（イベントオブジェクトを使わない）
+        function changeModeInternal(mode) {
+            if (mode === 'adjust' && !adjustMode.active) {
+                startAdjustMode();
+                return;
+            }
+            
+            currentMode = mode;
+            tempSelection.clear();
+            draggedCoordinate = null;
+            isDragging = false;
+            dragStartCell = null;
+            
+            if (mode === 'input') {
+                canvas.style.cursor = 'crosshair';
+            } else if (mode === 'adjust') {
+                canvas.style.cursor = 'move';
+            } else if (mode === 'delete') {
+                canvas.style.cursor = 'not-allowed';
+            } else {
+                canvas.style.cursor = 'default';
+            }
+            
+            drawMap();
+        }
+        
+        // ドロップダウン外をクリックしたら閉じる
+        window.onclick = function(event) {
+            if (!event.target.matches('.mode-dropdown-btn') && !event.target.matches('.mode-dropdown-btn *')) {
+                const dropdowns = document.getElementsByClassName('mode-dropdown-content');
+                for (let i = 0; i < dropdowns.length; i++) {
+                    if (dropdowns[i].classList.contains('show')) {
+                        dropdowns[i].classList.remove('show');
+                    }
+                }
+            }
+        }
+        
+        // モード変更（従来のボタン用 - 互換性のため残す）
+        function changeMode(mode) {
+            if (mode === 'adjust' && !adjustMode.active) {
+                startAdjustMode();
+                return;
+            }
+            
+            currentMode = mode;
+            tempSelection.clear();
+            draggedCoordinate = null;
+            isDragging = false;
+            dragStartCell = null;
+            
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (mode === 'input') {
+                canvas.style.cursor = 'crosshair';
+            } else if (mode === 'adjust') {
+                canvas.style.cursor = 'move';
+            } else if (mode === 'delete') {
+                canvas.style.cursor = 'not-allowed';
+            } else {
+                canvas.style.cursor = 'default';
+            }
+            
+            drawMap();
+        }
+        
+        // 座標調整モード開始
+        function startAdjustMode() {
+            if (savedCoordinates.length === 0) {
+                alert('調整する座標がありません');
+                return;
+            }
+            
+            adjustMode.active = true;
+            adjustMode.coordinates = savedCoordinates.map(c => ({...c}));
+            
+            const timestamp = new Date();
+            const dateStr = timestamp.toISOString().replace(/[-:T]/g, '').split('.')[0];
+            adjustMode.groupName = `座標調整_${dateStr}`;
+            
+            document.getElementById('adjustGroupName').value = adjustMode.groupName;
+            document.getElementById('adjustModePanel').style.display = 'block';
+            
+            currentMode = 'adjust';
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.mode-btn:nth-child(3)').classList.add('active');
+            canvas.style.cursor = 'move';
+            
+            drawMap();
+        }
+        
+        // 調整座標を保存
+        function saveAdjustedGroup() {
+            const groupName = document.getElementById('adjustGroupName').value.trim();
+            if (!groupName) {
+                alert('グループ名を入力してください');
+                return;
+            }
+            
+            const coordIds = [];
+            adjustMode.coordinates.forEach((c, i) => {
+                const newCoord = {
+                    ...c,
+                    id: Date.now().toString() + '-' + i + '-' + Math.floor(Math.random() * 1000000),
+                    createdAt: new Date().toISOString()
+                };
+                savedCoordinates.push(newCoord);
+                coordIds.push(newCoord.id);
+
+                // Firebaseに座標を保存
+                saveCoordinateToFirebase(newCoord).catch(error => {
+                    console.error('座標の保存エラー:', error);
+                });
+            });
+
+            const newGroup = {
+                id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                name: groupName,
+                coordinateIds: coordIds,
+                createdAt: new Date().toISOString()
+            };
+
+            coordinateGroups.push(newGroup);
+
+            // グループをFirebaseに個別保存（競合を防ぐため）
+            saveGroupToFirebase(newGroup).catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
+            cancelAdjustMode();
+            updateCoordinatesList();
+            updateGroupsList();
+            updateStats();
+            drawMap();
+            
+            alert('調整座標を保存しました');
+        }
+        
+        // 座標調整モードをキャンセル
+        function cancelAdjustMode() {
+            adjustMode.active = false;
+            adjustMode.coordinates = [];
+            adjustMode.groupName = '';
+            document.getElementById('adjustModePanel').style.display = 'none';
+            changeMode('view');
+        }
+        
+        // マウスダウン
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const worldPos = screenToWorld(x, y);
+
+            // スペースキーが押されている場合はパン操作を優先
+            if (isSpaceKeyPressed) {
+                isPanning = true;
+                lastPanPos = { x: e.clientX, y: e.clientY };
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            if (currentMode === 'view') {
+                // 修正5: ひし形モードでのパン操作
+                isPanning = true;
+                lastPanPos = { x: e.clientX, y: e.clientY };
+            } else if (currentMode === 'input') {
+                if (selectedObstacleType) {
+                    const customObstacle = customObstacles.find(o => o.id === selectedObstacleType);
+                    if (customObstacle && selectedObstacleType !== 'temp_custom') {
+                        handleInputClick(worldPos);
+                    } else {
+                        isDragging = true;
+                        dragStartCell = worldPos;
+                        dragCurrentCell = worldPos;
+                        
+                        const key = `${worldPos.x},${worldPos.y}`;
+                        const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
+                        dragStartCell.isObstacle = !!existingObstacle;
+                    }
+                } else {
+                    handleInputClick(worldPos);
+                }
+            } else if (currentMode === 'adjust') {
+                handleAdjustStart(worldPos, { x, y });
+            } else if (currentMode === 'delete') {
+                if (selectedObstacleType) {
+                    isDragging = true;
+                    dragStartCell = worldPos;
+                    dragCurrentCell = worldPos;
+                } else {
+                    handleDeleteClick(worldPos);
+                }
+            }
+        }
+        
+        // マウスムーブ
+        function handleMouseMove(e) {
+            // スペースキー押下中またはビューモードでのパン操作
+            if (isPanning && lastPanPos) {
+                // 修正5: ひし形モードでも画面座標系でパン操作
+                const dx = e.clientX - lastPanPos.x;
+                const dy = e.clientY - lastPanPos.y;
+                
+                if (gridType === 'diamond') {
+                    // ひし形モード: スクリーン座標の移動量を世界座標に変換
+                    const screenDelta = { x: dx, y: dy };
+                    const worldDelta = screenToWorldDelta(screenDelta);
+                    offsetX -= worldDelta.x;
+                    offsetY -= worldDelta.y;
+                } else {
+                    // 正方形モード: 従来通り
+                    offsetX -= dy / scale;
+                    offsetY -= dx / scale;
+                }
+                
+                lastPanPos = { x: e.clientX, y: e.clientY };
+                drawMap();
+            } else if ((currentMode === 'input' || currentMode === 'delete') && isDragging && dragStartCell) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const worldPos = screenToWorld(x, y);
+                
+                dragCurrentCell = worldPos;
+                updateDragSelection();
+                drawMap();
+            } else if (currentMode === 'adjust' && draggedCoordinate) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const worldPos = screenToWorld(x, y);
+                
+                draggedCoordinate.x = worldPos.x;
+                draggedCoordinate.y = worldPos.y;
+                drawMap();
+            }
+        }
+        
+        // 修正5: スクリーン座標のデルタをワールド座標のデルタに変換
+        function screenToWorldDelta(screenDelta) {
+            if (gridType === 'diamond') {
+                const sx = screenDelta.x / scale * 2;
+                const sy = screenDelta.y / scale / 0.876 * 2;
+                
+                return {
+                    x: (sx + sy) / 2,
+                    y: (sx - sy) / 2
+                };
+            } else {
+                return {
+                    x: screenDelta.y / scale,
+                    y: screenDelta.x / scale
+                };
+            }
+        }
+        
+        // マウスアップ
+        function handleMouseUp(e) {
+            // スペースキー押下中のパン操作終了
+            if (isSpaceKeyPressed && isPanning) {
+                isPanning = false;
+                lastPanPos = null;
+                canvas.style.cursor = 'grab';
+                return;
+            }
+
+            if (currentMode === 'view') {
+                isPanning = false;
+                lastPanPos = null;
+            } else if ((currentMode === 'input' || currentMode === 'delete') && isDragging) {
+                if (dragStartCell && dragCurrentCell && 
+                    dragStartCell.x === dragCurrentCell.x && 
+                    dragStartCell.y === dragCurrentCell.y) {
+                    updateDragSelection();
+                }
+                
+                if (selectedObstacleType && selectedObstacleType !== 'temp_custom') {
+                    // 修正1: currentModeを引数として渡す
+                    confirmDragObstacle(currentMode);
+                }
+                isDragging = false;
+                dragStartCell = null;
+                dragCurrentCell = null;
+            } else if (currentMode === 'adjust' && draggedCoordinate) {
+                draggedCoordinate = null;
+                drawMap();
+            }
+        }
+
+        // キーダウン（スペースキー検出）
+        function handleKeyDown(e) {
+            if (e.code === 'Space') {
+                // 入力欄やボタンにフォーカスがある場合はスペースキーを無視
+                const activeTag = document.activeElement.tagName;
+                if (activeTag === 'INPUT' ||
+                    activeTag === 'TEXTAREA' ||
+                    activeTag === 'BUTTON' ||
+                    activeTag === 'SELECT' ||
+                    activeTag === 'A') {
+                    return;
+                }
+
+                // スペースキーのデフォルト動作（ページスクロール）を防ぐ
+                e.preventDefault();
+
+                if (!isSpaceKeyPressed) {
+                    isSpaceKeyPressed = true;
+                    canvas.style.cursor = 'grab';
+                }
+            }
+        }
+
+        // キーアップ（スペースキー解除）
+        function handleKeyUp(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                isSpaceKeyPressed = false;
+                isPanning = false;
+                lastPanPos = null;
+                canvas.style.cursor = 'default';
+            }
+        }
+
+        // ドラッグ選択の更新
+        function updateDragSelection() {
+            if (!dragStartCell || !dragCurrentCell) return;
+            
+            tempSelection.clear();
+            
+            const minX = Math.min(dragStartCell.x, dragCurrentCell.x);
+            const maxX = Math.max(dragStartCell.x, dragCurrentCell.x);
+            const minY = Math.min(dragStartCell.y, dragCurrentCell.y);
+            const maxY = Math.max(dragStartCell.y, dragCurrentCell.y);
+            
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    const key = `${x},${y}`;
+                    tempSelection.add(key);
+                }
+            }
+        }
+        
+        // 修正1: ドラッグ障害物の確定 - currentModeを引数として受け取る
+        function confirmDragObstacle(mode) {
+            if (tempSelection.size === 0) return;
+
+            // 修正1: dragStartCell.isObstacleではなくmodeから判定
+            const isAddMode = (mode !== 'delete');
+
+            if (isAddMode) {
+                // 追加モード：選択したセルを新しい障害物として作成
+                const newCells = [];
+                tempSelection.forEach(key => {
+                    const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
+                    if (!existingObstacle) {
+                        newCells.push(key);
+                    }
+                });
+
+                // 新しいセルがあれば、新しい障害物オブジェクトを作成
+                if (newCells.length > 0) {
+                    obstacles.push({
+                        id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                        type: selectedObstacleType,
+                        cells: newCells
+                    });
+                }
+            } else {
+                // 削除モード：既存の障害物からセルを削除
+                tempSelection.forEach(key => {
+                    const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
+                    if (existingObstacle) {
+                        existingObstacle.cells = existingObstacle.cells.filter(c => c !== key);
+                    }
+                });
+            }
+            
+            obstacles = obstacles.filter(o => o.cells.length > 0);
+
+            // Firebaseに障害物を保存
+            saveObstaclesToFirebase().catch(error => {
+                console.error('障害物の保存エラー:', error);
+            });
+
+            tempSelection.clear();
+            groupObstacles();
+            updateObstaclesList();
+            updateStats();
+            drawMap();
+        }
+        
+        // ホイール(ズーム)
+        function handleWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            scale = Math.max(0.5, Math.min(100, scale * delta));
+            drawMap();
+        }
+        
+        // タッチスタート
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 1) {
+                const touch = touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                const worldPos = screenToWorld(x, y);
+
+                // 閲覧モードでは1本指でパン可能
+                if (currentMode === 'view') {
+                    lastPanPos = { x: touch.clientX, y: touch.clientY };
+                    isPanning = true;
+                } else if (currentMode === 'input') {
+                    if (selectedObstacleType) {
+                        const customObstacle = customObstacles.find(o => o.id === selectedObstacleType);
+                        if (customObstacle && selectedObstacleType !== 'temp_custom') {
+                            handleInputClick(worldPos);
+                        } else {
+                            isDragging = true;
+                            dragStartCell = worldPos;
+                            dragCurrentCell = worldPos;
+                            
+                            const key = `${worldPos.x},${worldPos.y}`;
+                            const existingObstacle = obstacles.find(o => o.cells.includes(key) && o.type === selectedObstacleType);
+                            dragStartCell.isObstacle = !!existingObstacle;
+                        }
+                    } else {
+                        handleInputClick(worldPos);
+                    }
+                } else if (currentMode === 'adjust') {
+                    handleAdjustStart(worldPos, { x, y });
+                } else if (currentMode === 'delete') {
+                    if (selectedObstacleType) {
+                        isDragging = true;
+                        dragStartCell = worldPos;
+                        dragCurrentCell = worldPos;
+                    } else {
+                        handleDeleteClick(worldPos);
+                    }
+                }
+            } else if (touches.length === 2) {
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                
+                const centerX = (touches[0].clientX + touches[1].clientX) / 2;
+                const centerY = (touches[0].clientY + touches[1].clientY) / 2;
+                lastPanPos = { x: centerX, y: centerY };
+                isPanning = true;
+            }
+        }
+        
+        // タッチムーブ
+        function handleTouchMove(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+            
+            if (touches.length === 2) {
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (lastTouchDistance > 0) {
+                    const delta = distance / lastTouchDistance;
+                    scale = Math.max(0.5, Math.min(100, scale * delta));
+                }
+                lastTouchDistance = distance;
+                
+                if (isPanning && lastPanPos) {
+                    const centerX = (touches[0].clientX + touches[1].clientX) / 2;
+                    const centerY = (touches[0].clientY + touches[1].clientY) / 2;
+                    
+                    const panDx = centerX - lastPanPos.x;
+                    const panDy = centerY - lastPanPos.y;
+                    
+                    // 修正5: タッチパン操作もひし形モードに対応
+                    if (gridType === 'diamond') {
+                        const screenDelta = { x: panDx, y: panDy };
+                        const worldDelta = screenToWorldDelta(screenDelta);
+                        offsetX -= worldDelta.x;
+                        offsetY -= worldDelta.y;
+                    } else {
+                        offsetX -= panDy / scale;
+                        offsetY -= panDx / scale;
+                    }
+                    
+                    lastPanPos = { x: centerX, y: centerY };
+                }
+                
+                drawMap();
+            } else if (touches.length === 1) {
+                const touch = touches[0];
+
+                // 閲覧モードでの1本指パン
+                if (currentMode === 'view' && isPanning && lastPanPos) {
+                    const panDx = touch.clientX - lastPanPos.x;
+                    const panDy = touch.clientY - lastPanPos.y;
+
+                    if (gridType === 'diamond') {
+                        const screenDelta = { x: panDx, y: panDy };
+                        const worldDelta = screenToWorldDelta(screenDelta);
+                        offsetX -= worldDelta.x;
+                        offsetY -= worldDelta.y;
+                    } else {
+                        offsetX -= panDy / scale;
+                        offsetY -= panDx / scale;
+                    }
+
+                    lastPanPos = { x: touch.clientX, y: touch.clientY };
+                    drawMap();
+                } else if ((currentMode === 'input' || currentMode === 'delete') && isDragging && dragStartCell) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    const worldPos = screenToWorld(x, y);
+
+                    dragCurrentCell = worldPos;
+                    updateDragSelection();
+                    drawMap();
+                } else if (currentMode === 'adjust' && draggedCoordinate) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    const worldPos = screenToWorld(x, y);
+
+                    draggedCoordinate.x = worldPos.x;
+                    draggedCoordinate.y = worldPos.y;
+                    drawMap();
+                }
+            }
+        }
+        
+        // タッチエンド
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+            
+            if (touches.length < 2) {
+                lastTouchDistance = 0;
+                isPanning = false;
+                lastPanPos = null;
+            }
+            
+            if (touches.length === 0) {
+                if ((currentMode === 'input' || currentMode === 'delete') && isDragging) {
+                    if (dragStartCell && dragCurrentCell && 
+                        dragStartCell.x === dragCurrentCell.x && 
+                        dragStartCell.y === dragCurrentCell.y) {
+                        updateDragSelection();
+                    }
+                    
+                    if (selectedObstacleType && selectedObstacleType !== 'temp_custom') {
+                        // 修正1: currentModeを引数として渡す
+                        confirmDragObstacle(currentMode);
+                    }
+                    isDragging = false;
+                    dragStartCell = null;
+                    dragCurrentCell = null;
+                } else if (currentMode === 'adjust' && draggedCoordinate) {
+                    draggedCoordinate = null;
+                    drawMap();
+                }
+            }
+        }
+        
+        // 入力クリック処理
+        function handleInputClick(worldPos) {
+            if (!selectedObstacleType) return;
+            
+            const key = `${worldPos.x},${worldPos.y}`;
+            
+            const customObstacle = customObstacles.find(o => o.id === selectedObstacleType);
+            if (customObstacle && customObstacle.shape && customObstacle.shape.length > 0) {
+                customObstacle.shape.forEach(cell => {
+                    const [dx, dy] = cell.split(',').map(Number);
+                    const targetKey = `${worldPos.x + dx},${worldPos.y + dy}`;
+                    tempSelection.add(targetKey);
+                });
+                
+                if (selectedObstacleType !== 'temp_custom') {
+                    // 修正1: currentModeを引数として渡す
+                    confirmDragObstacle(currentMode);
+                }
+            }
+        }
+        
+        // 座標調整開始
+        function handleAdjustStart(worldPos, screenPos) {
+            const dataSource = adjustMode.active ? adjustMode.coordinates : savedCoordinates;
+            const hitRadius = 10;
+            
+            let closestCoord = null;
+            let minDistance = Infinity;
+            
+            for (const coord of dataSource) {
+                if (!adjustMode.active && hiddenCoordinateIds.has(coord.id)) continue;
+                
+                const dx = coord.x - worldPos.x;
+                const dy = coord.y - worldPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (Math.abs(dx) <= hitRadius && Math.abs(dy) <= hitRadius) {
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestCoord = coord;
+                    }
+                }
+            }
+            
+            if (closestCoord) {
+                draggedCoordinate = closestCoord;
+            }
+        }
+        
+        // 削除クリック処理
+        function handleDeleteClick(worldPos) {
+            const coord = savedCoordinates.find(c => c.x === worldPos.x && c.y === worldPos.y);
+            if (coord) {
+                if (confirm(`${coord.name} を削除しますか?`)) {
+                    savedCoordinates = savedCoordinates.filter(c => c.id !== coord.id);
+                    selectedCoordinateIds.delete(coord.id);
+                    updateCoordinatesList();
+                    updateStats();
+                    drawMap();
+                }
+            }
+        }
+        
+        // マップ描画
+        function drawMap() {
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            ctx.fillStyle = '#f5f5f5';
+            ctx.fillRect(0, 0, width, height);
+            
+            drawPrimeZoneBackground();
+            
+            if (gridType === 'diamond') {
+                drawDiamondGrid();
+            } else {
+                drawSquareGrid();
+            }
+            
+            castles.forEach(castle => {
+                drawCastle(castle);
+            });
+            
+            const coordsToDisplay = adjustMode.active ? adjustMode.coordinates : savedCoordinates;
+            
+            coordsToDisplay.forEach(coord => {
+                if (!adjustMode.active && hiddenCoordinateIds.has(coord.id)) return;
+                drawResidenceArea(coord);
+            });
+            
+            obstacles.forEach(obstacle => {
+                drawObstacle(obstacle);
+            });
+            
+            if ((currentMode === 'input' || currentMode === 'delete') && tempSelection.size > 0) {
+                tempSelection.forEach(key => {
+                    const [x, y] = key.split(',').map(Number);
+                    const color = isCreatingCustomObstacle && customObstacleInProgress 
+                        ? customObstacleInProgress.color 
+                        : (selectedObstacleType ? getObstacleColor(selectedObstacleType) : 'rgba(255, 0, 0, 0.3)');
+                    drawCell(x, y, color);
+                });
+            }
+            
+            coordsToDisplay.forEach(coord => {
+                if (!adjustMode.active && hiddenCoordinateIds.has(coord.id)) return;
+                drawCoordinateMarker(coord);
+            });
+            
+            if (draggedCoordinate) {
+                drawCoordinateMarker(draggedCoordinate, true);
+            }
+
+            // マップ中央座標を表示を更新
+            const centerCoordDisplay = document.getElementById('centerCoordDisplay');
+            if (centerCoordDisplay) {
+                centerCoordDisplay.textContent = `中央: @${Math.round(offsetX)} ${Math.round(offsetY)}`;
+            }
+        }
+        
+        // 一級地帯の背景描画
+        function drawPrimeZoneBackground() {
+            if (gridType === 'diamond') {
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+                ctx.beginPath();
+                
+                const topLeft = worldToScreen(primeZone.minX, primeZone.minY);
+                const topRight = worldToScreen(primeZone.minX, primeZone.maxY + 1);
+                const bottomRight = worldToScreen(primeZone.maxX + 1, primeZone.maxY + 1);
+                const bottomLeft = worldToScreen(primeZone.maxX + 1, primeZone.minY);
+                
+                ctx.moveTo(topLeft.x, topLeft.y);
+                ctx.lineTo(topRight.x, topRight.y);
+                ctx.lineTo(bottomRight.x, bottomRight.y);
+                ctx.lineTo(bottomLeft.x, bottomLeft.y);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+                const pos1 = worldToScreen(primeZone.minX, primeZone.minY);
+                const pos2 = worldToScreen(primeZone.maxX + 1, primeZone.maxY + 1);
+                ctx.fillRect(pos1.x, pos1.y, pos2.x - pos1.x, pos2.y - pos1.y);
+            }
+        }
+        
+        // 正方形グリッド描画
+        function drawSquareGrid() {
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+            
+            ctx.lineWidth = 1;
+            
+            const visibleMinX = Math.floor(offsetX - height / scale / 2);
+            const visibleMaxX = Math.ceil(offsetX + height / scale / 2);
+            const visibleMinY = Math.floor(offsetY - width / scale / 2);
+            const visibleMaxY = Math.ceil(offsetY + width / scale / 2);
+            
+            for (let x = Math.max(worldBounds.minX, visibleMinX); x <= Math.min(worldBounds.maxX, visibleMaxX) + 1; x++) {
+                const pos1 = worldToScreen(x, visibleMinY);
+                const pos2 = worldToScreen(x, visibleMaxY);
+                
+                ctx.strokeStyle = x % 10 === 0 ? '#888' : '#d0d0d0';
+                ctx.beginPath();
+                ctx.moveTo(pos1.x, Math.floor(pos1.y) + 0.5);
+                ctx.lineTo(pos2.x, Math.floor(pos2.y) + 0.5);
+                ctx.stroke();
+            }
+            
+            for (let y = Math.max(worldBounds.minY, visibleMinY); y <= Math.min(worldBounds.maxY, visibleMaxY) + 1; y++) {
+                const pos1 = worldToScreen(visibleMinX, y);
+                const pos2 = worldToScreen(visibleMaxX, y);
+                
+                ctx.strokeStyle = y % 10 === 0 ? '#888' : '#d0d0d0';
+                ctx.beginPath();
+                ctx.moveTo(Math.floor(pos1.x) + 0.5, pos1.y);
+                ctx.lineTo(Math.floor(pos2.x) + 0.5, pos2.y);
+                ctx.stroke();
+            }
+        }
+        
+        // ひし形グリッド描画
+        function drawDiamondGrid() {
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+            
+            ctx.lineWidth = 1;
+            
+            const visibleRange = Math.max(width, height) / scale + 50;
+            const visibleMinX = Math.floor(offsetX - visibleRange);
+            const visibleMaxX = Math.ceil(offsetX + visibleRange);
+            const visibleMinY = Math.floor(offsetY - visibleRange);
+            const visibleMaxY = Math.ceil(offsetY + visibleRange);
+            
+            for (let x = Math.max(worldBounds.minX, visibleMinX); x <= Math.min(worldBounds.maxX, visibleMaxX) + 1; x++) {
+                for (let y = Math.max(worldBounds.minY, visibleMinY); y <= Math.min(worldBounds.maxY, visibleMaxY) + 1; y++) {
+                    const pos = worldToScreen(x, y);
+                    
+                    if (pos.x < -100 || pos.x > width + 100 || pos.y < -100 || pos.y > height + 100) {
+                        continue;
+                    }
+                    
+                    ctx.strokeStyle = (x % 10 === 0 || y % 10 === 0) ? '#888' : '#d0d0d0';
+                    
+                    if (y <= Math.min(worldBounds.maxY, visibleMaxY)) {
+                        const posRight = worldToScreen(x, y + 1);
+                        ctx.beginPath();
+                        ctx.moveTo(Math.floor(pos.x) + 0.5, Math.floor(pos.y) + 0.5);
+                        ctx.lineTo(Math.floor(posRight.x) + 0.5, Math.floor(posRight.y) + 0.5);
+                        ctx.stroke();
+                    }
+                    
+                    if (x <= Math.min(worldBounds.maxX, visibleMaxX)) {
+                        const posDown = worldToScreen(x + 1, y);
+                        ctx.beginPath();
+                        ctx.moveTo(Math.floor(pos.x) + 0.5, Math.floor(pos.y) + 0.5);
+                        ctx.lineTo(Math.floor(posDown.x) + 0.5, Math.floor(posDown.y) + 0.5);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+        
+        // セル描画
+        function drawCell(x, y, color) {
+            if (gridType === 'diamond') {
+                drawDiamondCell(x, y, color);
+            } else {
+                drawSquareCell(x, y, color);
+            }
+        }
+        
+        // 正方形セル描画
+        function drawSquareCell(x, y, color) {
+            const topLeft = worldToScreen(x, y);
+            const bottomRight = worldToScreen(x + 1, y + 1);
+            const width = bottomRight.x - topLeft.x;
+            const height = bottomRight.y - topLeft.y;
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(topLeft.x, topLeft.y, width, height);
+        }
+        
+        // ひし形セル描画
+        function drawDiamondCell(x, y, color) {
+            const topLeft = worldToScreen(x, y);
+            const topRight = worldToScreen(x, y + 1);
+            const bottomRight = worldToScreen(x + 1, y + 1);
+            const bottomLeft = worldToScreen(x + 1, y);
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(topLeft.x, topLeft.y);
+            ctx.lineTo(topRight.x, topRight.y);
+            ctx.lineTo(bottomRight.x, bottomRight.y);
+            ctx.lineTo(bottomLeft.x, bottomLeft.y);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // 城の描画
+        function drawCastle(castle) {
+            const { x, y, name } = castle;
+
+            for (let dx = -4; dx <= 4; dx++) {
+                for (let dy = -4; dy <= 4; dy++) {
+                    drawCell(x + dx, y + dy, 'rgba(128, 0, 128, 0.6)');
+                }
+            }
+
+            for (let dx = -8; dx <= 8; dx++) {
+                for (let dy = -8; dy <= 8; dy++) {
+                    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+                        drawCell(x + dx, y + dy, 'rgba(200, 150, 200, 0.3)');
+                    }
+                }
+            }
+
+            // 城の名前を表示
+            const screenPos = worldToScreen(x, y);
+            ctx.save();
+            ctx.font = `bold ${Math.max(12, scale * 2)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // 背景（白い影）を描画して読みやすくする
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.strokeText(name, screenPos.x, screenPos.y);
+
+            // テキストを描画
+            ctx.fillStyle = '#800080';
+            ctx.fillText(name, screenPos.x, screenPos.y);
+            ctx.restore();
+        }
+        
+        // 居住範囲の描画
+        function drawResidenceArea(coord) {
+            const { x, y } = coord;
+            const range = 10;
+            
+            for (let dx = -range; dx <= range; dx++) {
+                for (let dy = -range; dy <= range; dy++) {
+                    drawCell(x + dx, y + dy, 'rgba(100, 200, 100, 0.1)');
+                }
+            }
+        }
+        
+        // 障害物の色取得
+        function getObstacleColor(type) {
+            if (type === 'rock') {
+                return 'rgba(128, 128, 128, 0.6)';
+            }
+            
+            const custom = customObstacles.find(o => o.id === type);
+            if (custom) {
+                const color = custom.color;
+                
+                if (color.startsWith('#')) {
+                    const r = parseInt(color.slice(1, 3), 16);
+                    const g = parseInt(color.slice(3, 5), 16);
+                    const b = parseInt(color.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, 0.6)`;
+                }
+                
+                const rgb = color.match(/\d+/g);
+                if (rgb && rgb.length >= 3) {
+                    return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.6)`;
+                }
+                
+                return color;
+            }
+            
+            return 'rgba(128, 128, 128, 0.6)';
+        }
+        
+        // 障害物描画
+        function drawObstacle(obstacle) {
+            const color = getObstacleColor(obstacle.type);
+            
+            obstacle.cells.forEach(cell => {
+                const [x, y] = cell.split(',').map(Number);
+                drawCell(x, y, color);
+            });
+        }
+        
+        // 座標マーカー描画
+        function drawCoordinateMarker(coord, isDragging = false) {
+            const pos = gridType === 'diamond' 
+                ? worldToScreen(coord.x + 0.5, coord.y + 0.5)
+                : worldToScreen(coord.x + 0.5, coord.y + 0.5);
+            const size = Math.min(scale * 0.8, 30);
+            
+            ctx.fillStyle = isDragging ? '#ff9800' : '#ff4444';
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            if (scale > 2) {
+                const fontSize = Math.min(scale * 2, 14);
+                ctx.font = `bold ${fontSize}px sans-serif`;
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const name = coord.name.length > 10 ? coord.name.substring(0, 10) + '...' : coord.name;
+                
+                const metrics = ctx.measureText(name);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(pos.x - metrics.width / 2 - 2, pos.y - fontSize / 2 - 2, metrics.width + 4, fontSize + 4);
+                
+                ctx.fillStyle = '#000000';
+                ctx.fillText(name, pos.x, pos.y);
+            }
+        }
+        
+        // 座標解析
+        function parseCoordinates() {
+            const input = document.getElementById('coordInput').value.trim();
+            if (!input) {
+                alert('座標を入力してください');
+                return;
+            }
+            
+            parsedCoordinates = [];
+            
+            const customDelim = document.getElementById('customDelimiter').value.trim();
+            let entries;
+            
+            if (customDelim) {
+                entries = input.split(customDelim);
+            } else {
+                entries = input.split(/[\n、,]/);
+            }
+            
+            entries.forEach((entry, index) => {
+                entry = entry.trim();
+                if (!entry) return;
+                
+                let match = entry.match(/^(.+?)[::]?\s*[@@ ]\s*(\d+)\s+(\d+)/);
+                if (match) {
+                    parsedCoordinates.push({
+                        name: match[1].trim().replace(/[::] $/, ''),
+                        x: parseInt(match[2]),
+                        y: parseInt(match[3])
+                    });
+                    return;
+                }
+                
+                match = entry.match(/^(\d+)\s+(\d+)/);
+                if (match) {
+                    parsedCoordinates.push({
+                        name: `座標${parsedCoordinates.length + 1}`,
+                        x: parseInt(match[1]),
+                        y: parseInt(match[2])
+                    });
+                    return;
+                }
+            });
+            
+            if (parsedCoordinates.length === 0) {
+                alert('有効な座標が見つかりませんでした');
+                return;
+            }
+            
+            alert(`${parsedCoordinates.length}件の座標を解析しました`);
+            displayParseResult();
+        }
+        
+        // 解析結果表示
+        function displayParseResult() {
+            const section = document.getElementById('parseResultSection');
+            const container = document.getElementById('parseResult');
+            
+            section.style.display = 'block';
+            container.innerHTML = '';
+            
+            parsedCoordinates.forEach((coord, idx) => {
+                const div = document.createElement('div');
+                div.className = 'parse-result-item';
+                div.innerHTML = `
+                    <input type="text" class="name-input" value="${coord.name}" 
+                           onchange="updateParsedCoordinate(${idx}, 'name', this.value)">
+                    <span>@</span>
+                    <input type="number" class="coord-input" value="${coord.x}" min="0" max="700"
+                           onchange="updateParsedCoordinate(${idx}, 'x', this.value)">
+                    <input type="number" class="coord-input" value="${coord.y}" min="0" max="1900"
+                           onchange="updateParsedCoordinate(${idx}, 'y', this.value)">
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // 解析済み座標の更新
+        function updateParsedCoordinate(index, field, value) {
+            if (field === 'name') {
+                parsedCoordinates[index].name = value;
+            } else if (field === 'x') {
+                parsedCoordinates[index].x = parseInt(value);
+            } else if (field === 'y') {
+                parsedCoordinates[index].y = parseInt(value);
+            }
+        }
+        
+        // 解析結果をクリア
+        function clearParseResult() {
+            parsedCoordinates = [];
+            document.getElementById('parseResultSection').style.display = 'none';
+            document.getElementById('coordInput').value = '';
+            document.getElementById('coordInputGroupName').value = '';
+        }
+
+        // グループモード切り替え
+        function toggleGroupMode() {
+            const groupMode = document.querySelector('input[name="groupMode"]:checked').value;
+            const newGroupInput = document.getElementById('newGroupNameInput');
+            const existingGroupSelect = document.getElementById('existingGroupSelect');
+
+            if (groupMode === 'new') {
+                newGroupInput.style.display = 'block';
+                existingGroupSelect.style.display = 'none';
+            } else if (groupMode === 'existing') {
+                newGroupInput.style.display = 'none';
+                existingGroupSelect.style.display = 'block';
+                updateGroupSelectOptions(); // 既存グループリストを更新
+            } else {
+                newGroupInput.style.display = 'none';
+                existingGroupSelect.style.display = 'none';
+            }
+        }
+
+        // 既存グループ選択肢を更新
+        function updateGroupSelectOptions() {
+            const select = document.getElementById('coordInputGroupSelect');
+            select.innerHTML = '<option value="">グループを選択してください</option>';
+
+            coordinateGroups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group.id;
+                option.textContent = `${group.name} (${group.coordinateIds.length}件)`;
+                select.appendChild(option);
+            });
+        }
+        
+        // 座標を保存
+        function saveCoordinates() {
+            if (parsedCoordinates.length === 0) {
+                alert('解析結果がありません');
+                return;
+            }
+
+            // グループ設定を取得
+            const groupMode = document.querySelector('input[name="groupMode"]:checked').value;
+            let groupName = null;
+            let existingGroupId = null;
+
+            if (groupMode === 'new') {
+                groupName = document.getElementById('coordInputGroupName').value.trim();
+            } else if (groupMode === 'existing') {
+                existingGroupId = document.getElementById('coordInputGroupSelect').value;
+            }
+
+            // ステップ1: 入力データ内での重複チェック
+            const inputDuplicates = [];
+            const inputUnique = [];
+            const seenCoords = new Map(); // キー: "x,y", 値: 最初のインデックス
+
+            parsedCoordinates.forEach((coord, index) => {
+                const key = `${coord.x},${coord.y}`;
+                if (seenCoords.has(key)) {
+                    inputDuplicates.push(coord);
+                } else {
+                    seenCoords.set(key, index);
+                    inputUnique.push(coord);
+                }
+            });
+
+            // 入力データ内に重複がある場合の確認
+            if (inputDuplicates.length > 0) {
+                const saveInputDuplicates = confirm(
+                    `入力データ内に重複座標が${inputDuplicates.length}件あります。\n` +
+                    `${parsedCoordinates.length}件中${inputUnique.length}件がユニークな座標です。\n\n` +
+                    `重複データも含めて保存しますか?\n` +
+                    `(重複データは、マップには表示せずに保存されます)\n\n` +
+                    `「OK」: 重複データも保存\n` +
+                    `「キャンセル」: 重複データを除いて保存`
+                );
+
+                if (!saveInputDuplicates) {
+                    // 重複を除いたデータで続行
+                    parsedCoordinates = inputUnique;
+                    displayParseResult();
+                    alert(`重複データを除いた${inputUnique.length}件で処理を続けます`);
+                }
+            }
+
+            // ステップ2: 既存の保存済み座標との重複チェック
+            const duplicates = [];
+            const nonDuplicates = [];
+
+            parsedCoordinates.forEach(coord => {
+                const isDuplicate = savedCoordinates.some(saved =>
+                    saved.x === coord.x && saved.y === coord.y
+                );
+                if (isDuplicate) {
+                    duplicates.push(coord);
+                } else {
+                    nonDuplicates.push(coord);
+                }
+            });
+
+            if (duplicates.length > 0) {
+                const saveAll = confirm(
+                    `既存データとの重複が${duplicates.length}件ありますが、登録を行いますか?\n` +
+                    `(重複データは、マップには表示せずに保存されます)`
+                );
+
+                if (saveAll) {
+                    saveCoordsToDatabase(parsedCoordinates, duplicates, groupName, existingGroupId);
+                    clearParseResult();
+                } else {
+                    const saveNonDuplicates = confirm('重複データ以外の保存を行いますか?');
+
+                    if (saveNonDuplicates) {
+                        saveCoordsToDatabase(nonDuplicates, [], groupName, existingGroupId);
+
+                        parsedCoordinates = duplicates;
+                        displayParseResult();
+
+                        alert(`${nonDuplicates.length}件/${parsedCoordinates.length + nonDuplicates.length}件のデータを保存しました`);
+                    }
+                }
+            } else {
+                saveCoordsToDatabase(parsedCoordinates, [], groupName, existingGroupId);
+                clearParseResult();
+            }
+        }
+        
+        // 座標をデータベースに保存する内部関数
+        function saveCoordsToDatabase(coords, duplicates, groupName = null, existingGroupId = null) {
+            // グループ設定を処理
+            let targetGroup = null;
+
+            if (existingGroupId) {
+                // 既存グループに追加
+                targetGroup = coordinateGroups.find(g => g.id === existingGroupId);
+                if (!targetGroup) {
+                    alert('選択されたグループが見つかりません');
+                    return;
+                }
+            } else if (groupName && groupName.trim()) {
+                // 新規グループ作成（グループ名重複チェック付き）
+                const existingGroup = coordinateGroups.find(g => g.name === groupName.trim());
+
+                if (existingGroup) {
+                    // グループ名が重複している場合、確認ダイアログを表示
+                    const choice = confirm(
+                        `グループ名 "${groupName.trim()}" は既に存在します。\n\n` +
+                        `「OK」: 既存のグループに追加\n` +
+                        `「キャンセル」: 保存をキャンセル（グループ名を変更してください）`
+                    );
+
+                    if (choice) {
+                        // 既存グループに追加
+                        targetGroup = existingGroup;
+                    } else {
+                        // キャンセル
+                        return;
+                    }
+                } else {
+                    // 新規グループを作成
+                    targetGroup = {
+                        id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                        name: groupName.trim(),
+                        coordinateIds: [],
+                        createdAt: new Date().toISOString()
+                    };
+                    coordinateGroups.push(targetGroup);
+                }
+            }
+
+            // デフォルトグループ
+            const defaultGroup = coordinateGroups.find(g => g.id === 'default');
+
+            // 重複座標グループを取得または作成
+            let duplicateGroup = null;
+            if (duplicates.length > 0) {
+                duplicateGroup = coordinateGroups.find(g => g.name === '重複座標');
+                if (!duplicateGroup) {
+                    duplicateGroup = {
+                        id: 'duplicate-group-' + Date.now().toString(),
+                        name: '重複座標',
+                        coordinateIds: []
+                    };
+                    coordinateGroups.push(duplicateGroup);
+                }
+            }
+
+            const newCoordIds = [];
+            coords.forEach(coord => {
+                const newCoord = {
+                    id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                    name: coord.name,
+                    x: coord.x,
+                    y: coord.y,
+                    createdAt: new Date().toISOString()
+                };
+                savedCoordinates.push(newCoord);
+                newCoordIds.push(newCoord.id);
+
+                // Firebaseに座標を保存
+                saveCoordinateToFirebase(newCoord).catch(error => {
+                    console.error('座標の保存エラー:', error);
+                });
+
+                // デフォルトグループに追加
+                if (defaultGroup) {
+                    if (!defaultGroup.coordinateIds) {
+                        defaultGroup.coordinateIds = [];
+                    }
+                    defaultGroup.coordinateIds.push(newCoord.id);
+                }
+
+                // 指定されたグループにも追加
+                if (targetGroup) {
+                    if (!targetGroup.coordinateIds) {
+                        targetGroup.coordinateIds = [];
+                    }
+                    targetGroup.coordinateIds.push(newCoord.id);
+                }
+
+                const isDuplicate = duplicates.some(d => d.x === coord.x && d.y === coord.y);
+                if (isDuplicate) {
+                    hiddenCoordinateIds.add(newCoord.id);
+                    duplicateCoordinateIds.add(newCoord.id);
+                    // 重複座標グループに追加
+                    if (duplicateGroup) {
+                        if (!duplicateGroup.coordinateIds) {
+                            duplicateGroup.coordinateIds = [];
+                        }
+                        duplicateGroup.coordinateIds.push(newCoord.id);
+                    }
+                }
+            });
+
+            // 更新されたグループを個別にFirebaseに保存（競合を防ぐため）
+            const groupsToSave = [];
+            if (defaultGroup) groupsToSave.push(defaultGroup);
+            if (targetGroup && targetGroup !== defaultGroup) groupsToSave.push(targetGroup);
+            if (duplicateGroup && duplicateGroup !== defaultGroup && duplicateGroup !== targetGroup) groupsToSave.push(duplicateGroup);
+
+            groupsToSave.forEach(group => {
+                saveGroupToFirebase(group).catch(error => {
+                    console.error('グループの保存エラー:', error);
+                });
+            });
+
+            updateCoordinatesList();
+            updateGroupsList();
+            updateStats();
+            drawMap();
+
+            if (coords.length > 0) {
+                let message = `${coords.length}件の座標を保存しました`;
+                if (targetGroup) {
+                    message += `\nグループ「${targetGroup.name}」に追加しました`;
+                }
+                alert(message);
+            }
+        }
+        
+        // 修正3+9: フィルター適用 - isFilterActive対応
+        function applyFilters() {
+            const nameFilter = document.getElementById('nameFilter').value.toLowerCase();
+            const dateFrom = document.getElementById('dateFilterFrom').value;
+            const dateTo = document.getElementById('dateFilterTo').value;
+            const sortBy = document.getElementById('sortBy').value;
+            
+            // フィルタが適用されているかチェック
+            isFilterActive = !!(nameFilter || dateFrom || dateTo);
+            
+            if (!isFilterActive) {
+                filteredCoordinates = [];
+                updateFilterDisplay();
+                updateCoordinatesList();
+                return;
+            }
+            
+            filteredCoordinates = savedCoordinates.filter(coord => {
+                if (nameFilter && !coord.name.toLowerCase().includes(nameFilter)) {
+                    return false;
+                }
+                
+                if (coord.createdAt) {
+                    const coordDate = coord.createdAt.split('T')[0];
+                    if (dateFrom && coordDate < dateFrom) return false;
+                    if (dateTo && coordDate > dateTo) return false;
+                }
+                
+                return true;
+            });
+            
+            filteredCoordinates.sort((a, b) => {
+                switch (sortBy) {
+                    case 'date-desc':
+                        return (b.createdAt || '').localeCompare(a.createdAt || '');
+                    case 'date-asc':
+                        return (a.createdAt || '').localeCompare(b.createdAt || '');
+                    case 'name-asc':
+                        return a.name.localeCompare(b.name);
+                    case 'name-desc':
+                        return b.name.localeCompare(a.name);
+                    case 'x-asc':
+                        return a.x - b.x;
+                    case 'x-desc':
+                        return b.x - a.x;
+                    case 'y-asc':
+                        return a.y - b.y;
+                    case 'y-desc':
+                        return b.y - a.y;
+                    default:
+                        return 0;
+                }
+            });
+
+            // 名称検索時は自動的にヒットした座標を選択
+            if (nameFilter) {
+                filteredCoordinates.forEach(coord => {
+                    selectedCoordinateIds.add(coord.id);
+                });
+            }
+
+            updateFilterDisplay();
+            updateCoordinatesList();
+        }
+        
+
+        // フィルタ表示を更新
+        function updateFilterDisplay() {
+            const container = document.getElementById('activeFiltersDisplay');
+            if (!container) return;
+            
+            const nameFilter = document.getElementById('nameFilter').value;
+            const dateFrom = document.getElementById('dateFilterFrom').value;
+            const dateTo = document.getElementById('dateFilterTo').value;
+            const sortBy = document.getElementById('sortBy').value;
+            
+            // フィルタまたはグループが適用されているかチェック
+            const hasFilters = isFilterActive || groupFilterActive;
+            
+            if (!hasFilters) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            
+            // フィルタ件数を計算
+            let resultCount = 0;
+            if (groupFilterActive && expandedGroupId) {
+                const group = coordinateGroups.find(g => g.id === expandedGroupId);
+                if (group) {
+                    resultCount = savedCoordinates.filter(c => group.coordinateIds.includes(c.id)).length;
+                }
+            } else if (isFilterActive) {
+                resultCount = filteredCoordinates.length;
+            }
+            
+            // ヘッダー部分
+            const headerHTML = `
+                <div class="active-filters-header">
+                    <span>🔍 適用中のフィルタ:</span>
+                    <span class="filter-count">(${resultCount}件該当)</span>
+                </div>
+            `;
+            
+            // タグ部分
+            let tagsHTML = '<div class="filter-tags">';
+            
+            // 名前フィルタ
+            if (nameFilter) {
+                tagsHTML += `
+                    <span class="filter-tag">
+                        🔤 名前: "${nameFilter}"
+                        <button onclick="removeNameFilter()">✕</button>
+                    </span>
+                `;
+            }
+            
+            // 日付フィルタ
+            if (dateFrom || dateTo) {
+                let dateText = '📅 期間: ';
+                if (dateFrom && dateTo) {
+                    dateText += `${dateFrom}～${dateTo}`;
+                } else if (dateFrom) {
+                    dateText += `${dateFrom}～`;
+                } else {
+                    dateText += `～${dateTo}`;
+                }
+                tagsHTML += `
+                    <span class="filter-tag">
+                        ${dateText}
+                        <button onclick="removeDateFilter()">✕</button>
+                    </span>
+                `;
+            }
+            
+            // グループフィルタ
+            if (groupFilterActive && expandedGroupId) {
+                const group = coordinateGroups.find(g => g.id === expandedGroupId);
+                if (group) {
+                    tagsHTML += `
+                        <span class="filter-tag">
+                            📦 グループ: ${group.name}
+                            <button onclick="removeGroupFilter()">✕</button>
+                        </span>
+                    `;
+                }
+            }
+            
+            // ソート順（デフォルト以外の場合のみ表示）
+            if (sortBy !== 'date-desc') {
+                const sortLabels = {
+                    'date-asc': '登録日時(古→新)',
+                    'name-asc': '名前(A→Z)',
+                    'name-desc': '名前(Z→A)',
+                    'x-asc': 'X座標(小→大)',
+                    'x-desc': 'X座標(大→小)',
+                    'y-asc': 'Y座標(小→大)',
+                    'y-desc': 'Y座標(大→小)'
+                };
+                tagsHTML += `
+                    <span class="filter-tag">
+                        ↓ ソート: ${sortLabels[sortBy] || sortBy}
+                    </span>
+                `;
+            }
+            
+            // すべてクリアボタン
+            tagsHTML += `
+                <button class="clear-all-filters-btn" onclick="clearFilters()">
+                    すべてクリア
+                </button>
+            `;
+            
+            tagsHTML += '</div>';
+            
+            container.innerHTML = headerHTML + tagsHTML;
+        }
+        
+        // 名前フィルタを削除
+        function removeNameFilter() {
+            document.getElementById('nameFilter').value = '';
+            applyFilters();
+        }
+        
+        // 日付フィルタを削除
+        function removeDateFilter() {
+            document.getElementById('dateFilterFrom').value = '';
+            document.getElementById('dateFilterTo').value = '';
+            applyFilters();
+        }
+        
+        // グループフィルタを削除
+        function removeGroupFilter() {
+            groupFilterActive = false;
+            expandedGroupId = null;
+            updateFilterDisplay();
+            updateCoordinatesList();
+            updateGroupsList();
+        }
+        
+        // フィルタークリア
+        function clearFilters() {
+            document.getElementById('nameFilter').value = '';
+            document.getElementById('dateFilterFrom').value = '';
+            document.getElementById('dateFilterTo').value = '';
+            document.getElementById('sortBy').value = 'date-desc';
+            filteredCoordinates = [];
+            isFilterActive = false;
+            groupFilterActive = false;
+            expandedGroupId = null;
+            updateFilterDisplay();
+            updateCoordinatesList();
+            updateGroupsList();
+        }
+        
+        // 座標リスト更新
+        function updateCoordinatesList() {
+            const container = document.getElementById('coordinateList');
+            container.innerHTML = '';
+            
+            // フィルタ表示を更新
+            updateFilterDisplay();
+            
+            // 表示する座標を決定
+            let displayCoords;
+            if (groupFilterActive && expandedGroupId) {
+                const group = coordinateGroups.find(g => g.id === expandedGroupId);
+                if (group) {
+                    displayCoords = savedCoordinates.filter(c => group.coordinateIds.includes(c.id));
+                } else {
+                    displayCoords = savedCoordinates;
+                }
+            } else if (isFilterActive) {
+                // フィルタが適用されている場合は、結果が0件でもfilteredCoordinatesを使用
+                displayCoords = filteredCoordinates;
+            } else {
+                // フィルタ未適用の場合は全座標
+                displayCoords = savedCoordinates;
+            }
+            
+            // 0件メッセージの表示
+            if (displayCoords.length === 0 && (isFilterActive || groupFilterActive)) {
+                const noResults = document.createElement('div');
+                noResults.className = 'no-results-message';
+                noResults.textContent = '該当する座標がありません';
+                container.appendChild(noResults);
+                return;
+            }
+            
+            if (displayCoords.length > 0) {
+                const selectAllDiv = document.createElement('div');
+                selectAllDiv.style.cssText = 'background: #e3f2fd; padding: 8px; margin-bottom: 8px; border-radius: 4px;';
+                
+                const allSelected = displayCoords.every(c => selectedCoordinateIds.has(c.id));
+                
+                selectAllDiv.innerHTML = `
+                    <label style="cursor: pointer; font-weight: bold;">
+                        <input type="checkbox" id="selectAllCoords" ${allSelected ? 'checked' : ''} onchange="toggleSelectAllCoordinates(this.checked)">
+                        すべて選択
+                    </label>
+                `;
+                container.appendChild(selectAllDiv);
+            }
+            
+            displayCoords.forEach(coord => {
+                const div = document.createElement('div');
+                div.className = 'coordinate-item';
+                div.style.opacity = hiddenCoordinateIds.has(coord.id) ? '0.5' : '1';
+                
+                const isSelected = selectedCoordinateIds.has(coord.id);
+                const createdDate = new Date(coord.createdAt).toLocaleDateString('ja-JP');
+                const createdDateISO = coord.createdAt.split('T')[0];
+                const isDuplicate = duplicateCoordinateIds.has(coord.id);
+                
+                div.innerHTML = `
+                    <label style="display: flex; align-items: center; flex: 1;">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''}
+                               onchange="toggleCoordinateSelection('${coord.id}', this.checked)" onclick="event.stopPropagation()">
+                        <span>
+                            <a class="coordinate-name-link" onclick="jumpToCoordinate('${coord.id}'); event.stopPropagation();">
+                                ${coord.name}: @${coord.x} ${coord.y}
+                            </a>
+                            ${isDuplicate ? '<span style="color: #ff9800; font-size: 0.9em; margin-left: 4px;">[重複]</span>' : ''}
+                            <a class="coordinate-name-link" onclick="filterByDate('${createdDateISO}'); event.stopPropagation();" style="margin-left: 4px;">
+                                (${createdDate})
+                            </a>
+                        </span>
+                    </label>
+                    <div class="item-actions">
+                        <button onclick="editCoordinate('${coord.id}'); event.stopPropagation();">✏️</button>
+                        <button onclick="deleteCoordinate('${coord.id}'); event.stopPropagation();"
+                                style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
+                    </div>
+                `;
+                
+                div.onclick = (e) => {
+                    if (rangeSelectMode && !e.target.closest('button') && !e.target.closest('input[type="checkbox"]') && !e.target.closest('a')) {
+                        handleRangeSelect(coord.id);
+                    }
+                };
+                
+                container.appendChild(div);
+            });
+
+            // 選択件数表示を更新
+            updateSelectedCount();
+        }
+
+        // 選択件数表示を更新
+        function updateSelectedCount() {
+            const countDisplay = document.getElementById('selectedCountDisplay');
+            const countNumber = document.getElementById('selectedCountNumber');
+            const count = selectedCoordinateIds.size;
+
+            if (count > 0) {
+                countDisplay.style.display = 'block';
+                countNumber.textContent = count;
+            } else {
+                countDisplay.style.display = 'none';
+            }
+        }
+
+        // 座標にジャンプ
+        function jumpToCoordinate(id) {
+            const coord = savedCoordinates.find(c => c.id === id);
+            if (!coord) return;
+            
+            offsetX = coord.x;
+            offsetY = coord.y;
+            scale = Math.max(scale, 5);
+            drawMap();
+        }
+        
+        // 一級地帯にジャンプ
+        function jumpToPrimeZone() {
+            offsetX = (primeZone.minX + primeZone.maxX) / 2;
+            offsetY = (primeZone.minY + primeZone.maxY) / 2;
+
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+
+            scale = Math.min(
+                width / (primeZone.maxY - primeZone.minY + 20),
+                height / (primeZone.maxX - primeZone.minX + 20)
+            );
+
+            drawMap();
+        }
+
+        // 入力座標にジャンプ
+        function jumpToInputCoordinate() {
+            const x = parseInt(document.getElementById('jumpX').value);
+            const y = parseInt(document.getElementById('jumpY').value);
+
+            if (isNaN(x) || isNaN(y)) {
+                alert('X座標とY座標を入力してください');
+                return;
+            }
+
+            offsetX = x;
+            offsetY = y;
+            scale = Math.max(scale, 10); // 最低でも10倍にズーム
+            drawMap();
+        }
+
+        // 一括選択モードの切り替え
+        function toggleRangeSelectMode() {
+            rangeSelectMode = document.getElementById('rangeSelectMode').checked;
+            rangeSelectStart = null;
+        }
+        
+        // 範囲選択処理
+        function handleRangeSelect(coordinateId) {
+            if (!rangeSelectStart) {
+                rangeSelectStart = coordinateId;
+                if (selectedCoordinateIds.has(coordinateId)) {
+                    selectedCoordinateIds.delete(coordinateId);
+                } else {
+                    selectedCoordinateIds.add(coordinateId);
+                }
+            } else {
+                if (rangeSelectStart === coordinateId) {
+                    if (selectedCoordinateIds.has(coordinateId)) {
+                        selectedCoordinateIds.delete(coordinateId);
+                    }
+                    rangeSelectStart = null;
+                } else {
+                    const displayCoords = filteredCoordinates.length > 0 ? filteredCoordinates : savedCoordinates;
+                    const startIndex = displayCoords.findIndex(c => c.id === rangeSelectStart);
+                    const endIndex = displayCoords.findIndex(c => c.id === coordinateId);
+                    
+                    const minIndex = Math.min(startIndex, endIndex);
+                    const maxIndex = Math.max(startIndex, endIndex);
+                    
+                    for (let i = minIndex; i <= maxIndex; i++) {
+                        selectedCoordinateIds.add(displayCoords[i].id);
+                    }
+                    
+                    rangeSelectStart = null;
+                }
+            }
+            
+            updateCoordinatesList();
+            updateStats();
+        }
+        
+        // 座標選択トグル
+        function toggleCoordinateSelection(id, checked) {
+            if (checked) {
+                selectedCoordinateIds.add(id);
+            } else {
+                selectedCoordinateIds.delete(id);
+            }
+            updateSelectedCount();
+            updateStats();
+        }
+        
+        // すべての座標選択トグル
+        function toggleSelectAllCoordinates(checked) {
+            const displayCoords = filteredCoordinates.length > 0 ? filteredCoordinates : savedCoordinates;
+            if (checked) {
+                displayCoords.forEach(c => selectedCoordinateIds.add(c.id));
+            } else {
+                displayCoords.forEach(c => selectedCoordinateIds.delete(c.id));
+            }
+            updateCoordinatesList();
+            updateStats();
+        }
+        
+        // 選択済み座標を非表示
+        function hideSelectedCoordinates() {
+            if (selectedCoordinateIds.size === 0) {
+                alert('座標を選択してください');
+                return;
+            }
+            
+            selectedCoordinateIds.forEach(id => hiddenCoordinateIds.add(id));
+            updateCoordinatesList();
+            drawMap();
+        }
+        
+        // 選択済み座標のみ表示
+        function showSelectedCoordinatesOnly() {
+            if (selectedCoordinateIds.size === 0) {
+                alert('座標を選択してください');
+                return;
+            }
+
+            // すべての座標を非表示にする
+            savedCoordinates.forEach(coord => {
+                if (!selectedCoordinateIds.has(coord.id)) {
+                    hiddenCoordinateIds.add(coord.id);
+                }
+            });
+
+            // 選択済み座標は表示する
+            selectedCoordinateIds.forEach(id => {
+                hiddenCoordinateIds.delete(id);
+            });
+
+            updateCoordinatesList();
+            drawMap();
+        }
+
+        // すべての座標を表示
+        function showAllCoordinates() {
+            hiddenCoordinateIds.clear();
+            updateCoordinatesList();
+            drawMap();
+        }
+        
+        // 選択座標の削除
+        function deleteSelectedCoordinates() {
+            if (selectedCoordinateIds.size === 0) {
+                alert('座標を選択してください');
+                return;
+            }
+
+            if (confirm(`選択された${selectedCoordinateIds.size}件の座標を削除しますか?`)) {
+                // Firebaseから削除
+                selectedCoordinateIds.forEach(id => {
+                    deleteCoordinateFromFirebase(id).catch(error => {
+                        console.error('座標の削除エラー:', error);
+                    });
+                    duplicateCoordinateIds.delete(id);
+                    hiddenCoordinateIds.delete(id);
+                });
+
+                savedCoordinates = savedCoordinates.filter(c => !selectedCoordinateIds.has(c.id));
+
+                // 各グループから削除された座標を除去し、変更があったグループのみ保存
+                coordinateGroups.forEach(group => {
+                    const originalLength = group.coordinateIds.length;
+                    group.coordinateIds = group.coordinateIds.filter(id => !selectedCoordinateIds.has(id));
+
+                    // coordinateIdsに変更があった場合のみFirebaseに保存（競合を防ぐため）
+                    if (group.coordinateIds.length !== originalLength) {
+                        saveGroupToFirebase(group).catch(error => {
+                            console.error('グループの保存エラー:', error);
+                        });
+                    }
+                });
+
+                selectedCoordinateIds.clear();
+                updateCoordinatesList();
+                updateGroupsList();
+                updateStats();
+                drawMap();
+            }
+        }
+        
+        // 座標編集
+        function editCoordinate(id) {
+            const coord = savedCoordinates.find(c => c.id === id);
+            if (!coord) return;
+            
+            const newName = prompt('新しい名前を入力してください:', coord.name);
+            if (newName) {
+                coord.name = newName;
+                updateCoordinatesList();
+            }
+        }
+        
+        // 座標削除
+        function deleteCoordinate(id) {
+            const coord = savedCoordinates.find(c => c.id === id);
+            if (!coord) return;
+            
+            if (confirm(`${coord.name} を削除しますか?`)) {
+                savedCoordinates = savedCoordinates.filter(c => c.id !== id);
+                selectedCoordinateIds.delete(id);
+                hiddenCoordinateIds.delete(id);
+                duplicateCoordinateIds.delete(id);
+                
+                coordinateGroups.forEach(group => {
+                    group.coordinateIds = group.coordinateIds.filter(cid => cid !== id);
+                });
+                
+                updateCoordinatesList();
+                updateGroupsList();
+                updateStats();
+                drawMap();
+            }
+        }
+        
+        // グループ作成
+        function createGroup() {
+            const name = document.getElementById('groupName').value.trim();
+            if (!name) {
+                alert('グループ名を入力してください');
+                return;
+            }
+
+            const newGroup = {
+                id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                name: name,
+                coordinateIds: Array.from(selectedCoordinateIds),
+                createdAt: new Date().toISOString()
+            };
+
+            coordinateGroups.push(newGroup);
+
+            // Firebaseに個別保存（競合を防ぐため）
+            saveGroupToFirebase(newGroup).catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
+            document.getElementById('groupName').value = '';
+            selectedCoordinateIds.clear();
+
+            updateCoordinatesList();
+            updateGroupsList();
+            updateStats();
+        }
+
+        // ダイアログでグループ名を入力してグループを作成
+        function createGroupWithPrompt() {
+            if (selectedCoordinateIds.size === 0) {
+                alert('グループに追加する座標を選択してください');
+                return;
+            }
+
+            const name = prompt('グループ名を入力してください:');
+            if (!name || name.trim() === '') {
+                return; // キャンセルまたは空白の場合は何もしない
+            }
+
+            const newGroup = {
+                id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                name: name.trim(),
+                coordinateIds: Array.from(selectedCoordinateIds),
+                createdAt: new Date().toISOString()
+            };
+
+            coordinateGroups.push(newGroup);
+
+            // Firebaseに個別保存（競合を防ぐため）
+            saveGroupToFirebase(newGroup).catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
+            selectedCoordinateIds.clear();
+
+            updateCoordinatesList();
+            updateGroupsList();
+            updateStats();
+        }
+
+        // グループのフィルタリングとソート
+        function applyGroupFilters() {
+            updateGroupsList();
+        }
+
+        // 修正8: グループリスト更新 - アコーディオン式（フィルタ・ソート対応）
+        function updateGroupsList() {
+            const container = document.getElementById('groupList');
+            container.innerHTML = '';
+
+            // フィルタリング
+            const searchText = document.getElementById('groupNameFilter')?.value.toLowerCase() || '';
+            let filteredGroups = coordinateGroups.filter(group => {
+                if (searchText && !group.name.toLowerCase().includes(searchText)) {
+                    return false;
+                }
+                return true;
+            });
+
+            // ソート
+            const sortBy = document.getElementById('groupSortBy')?.value || 'date-desc';
+            filteredGroups.sort((a, b) => {
+                switch (sortBy) {
+                    case 'date-desc':
+                        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                    case 'date-asc':
+                        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+                    case 'name-asc':
+                        return a.name.localeCompare(b.name);
+                    case 'name-desc':
+                        return b.name.localeCompare(a.name);
+                    case 'count-desc':
+                        return (b.coordinateIds?.length || 0) - (a.coordinateIds?.length || 0);
+                    case 'count-asc':
+                        return (a.coordinateIds?.length || 0) - (b.coordinateIds?.length || 0);
+                    default:
+                        return 0;
+                }
+            });
+
+            filteredGroups.forEach(group => {
+                const div = document.createElement('div');
+                div.className = 'group-item' + (expandedGroupId === group.id ? ' expanded' : '');
+                
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'group-header';
+                headerDiv.onclick = () => toggleGroupExpansion(group.id);
+                
+                headerDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span class="group-expand-icon">▶</span>
+                        <strong style="flex: 1;">${group.name}</strong>
+                        <span style="color: #666; margin-right: 8px;">(${(group.coordinateIds || []).length}件)</span>
+                    </div>
+                    <div class="item-actions" onclick="event.stopPropagation();">
+                        <button onclick="selectGroupCoordinates('${group.id}')">選択</button>
+                        <button onclick="addCoordinatesToGroup('${group.id}')" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">➕追加</button>
+                        <button onclick="editGroup('${group.id}')">✏️</button>
+                        <button onclick="deleteGroup('${group.id}')"
+                                style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
+                    </div>
+                `;
+                
+                div.appendChild(headerDiv);
+                
+                // 修正8: 座標リストの展開（階層表示）
+                const coordsDiv = document.createElement('div');
+                coordsDiv.className = 'group-coordinates';
+                
+                const groupCoords = savedCoordinates.filter(c => (group.coordinateIds || []).includes(c.id));
+                groupCoords.forEach((coord, index) => {
+                    const coordItem = document.createElement('div');
+                    coordItem.className = 'group-coord-item';
+                    const isLast = index === groupCoords.length - 1;
+                    const prefix = isLast ? '└' : '├';
+                    coordItem.textContent = `${prefix} ${coord.name}: @${coord.x} ${coord.y}`;
+                    coordItem.onclick = () => jumpToCoordinate(coord.id);
+                    coordsDiv.appendChild(coordItem);
+                });
+                
+                div.appendChild(coordsDiv);
+                container.appendChild(div);
+            });
+        }
+        
+        // 修正8: グループ展開トグル
+        function toggleGroupExpansion(groupId) {
+            if (expandedGroupId === groupId) {
+                // 同じグループをクリック: 閉じる
+                expandedGroupId = null;
+                groupFilterActive = false;
+            } else {
+                // 別のグループをクリック: 開く
+                expandedGroupId = groupId;
+                groupFilterActive = true;
+            }
+            
+            updateGroupsList();
+            updateCoordinatesList();
+        }
+        
+        // グループに座標を追加
+        function addCoordinatesToGroup(groupId) {
+            const group = coordinateGroups.find(g => g.id === groupId);
+            if (!group) return;
+            
+            if (selectedCoordinateIds.size === 0) {
+                alert('座標を選択してください');
+                return;
+            }
+            
+            let addedCount = 0;
+            let skippedCount = 0;
+            
+            selectedCoordinateIds.forEach(id => {
+                if (!group.coordinateIds.includes(id)) {
+                    group.coordinateIds.push(id);
+                    addedCount++;
+                } else {
+                    skippedCount++;
+                }
+            });
+            
+            updateGroupsList();
+            updateStats();
+            
+            alert(`${addedCount}件の座標を「${group.name}」に追加しました。\n(既に含まれていた座標:${skippedCount}件)`);
+        }
+        
+        // グループの座標を選択
+        function selectGroupCoordinates(groupId) {
+            const group = coordinateGroups.find(g => g.id === groupId);
+            if (!group) return;
+            
+            selectedCoordinateIds.clear();
+            group.coordinateIds.forEach(id => {
+                if (savedCoordinates.find(c => c.id === id)) {
+                    selectedCoordinateIds.add(id);
+                }
+            });
+            
+            updateCoordinatesList();
+            updateStats();
+        }
+        
+        // グループ編集ダイアログを開く
+        let editingGroupId = null;
+        let editGroupSelectedCoordIds = new Set();
+
+        function editGroup(groupId) {
+            const group = coordinateGroups.find(g => g.id === groupId);
+            if (!group) return;
+
+            editingGroupId = groupId;
+            editGroupSelectedCoordIds.clear();
+
+            // グループ名を設定
+            document.getElementById('editGroupName').value = group.name;
+
+            // 座標リストを表示
+            const coordsList = document.getElementById('editGroupCoordsList');
+            coordsList.innerHTML = '';
+
+            const groupCoords = savedCoordinates.filter(c => (group.coordinateIds || []).includes(c.id));
+            groupCoords.forEach(coord => {
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 8px; border-bottom: 1px solid #eee; display: flex; align-items: center;';
+                div.innerHTML = `
+                    <label style="display: flex; align-items: center; flex: 1; cursor: pointer;">
+                        <input type="checkbox" onchange="toggleEditGroupCoord('${coord.id}', this.checked)" style="margin-right: 8px;">
+                        <span>${coord.name}: @${coord.x} ${coord.y}</span>
+                    </label>
+                `;
+                coordsList.appendChild(div);
+            });
+
+            // ダイアログを表示
+            document.getElementById('groupEditDialog').style.display = 'flex';
+        }
+
+        // 編集グループの座標選択トグル
+        function toggleEditGroupCoord(coordId, checked) {
+            if (checked) {
+                editGroupSelectedCoordIds.add(coordId);
+            } else {
+                editGroupSelectedCoordIds.delete(coordId);
+            }
+        }
+
+        // グループ編集ダイアログを閉じる
+        function closeGroupEditDialog() {
+            document.getElementById('groupEditDialog').style.display = 'none';
+            editingGroupId = null;
+            editGroupSelectedCoordIds.clear();
+        }
+
+        // グループ編集を保存
+        function saveGroupEdits() {
+            const group = coordinateGroups.find(g => g.id === editingGroupId);
+            if (!group) return;
+
+            const newName = document.getElementById('editGroupName').value.trim();
+            if (!newName) {
+                alert('グループ名を入力してください');
+                return;
+            }
+
+            // グループ名の重複チェック（自分以外）
+            const duplicateGroup = coordinateGroups.find(g => g.id !== editingGroupId && g.name === newName);
+            if (duplicateGroup) {
+                alert(`グループ名 "${newName}" は既に存在します`);
+                return;
+            }
+
+            group.name = newName;
+
+            // Firebaseに保存
+            saveGroupToFirebase(group).catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
+            closeGroupEditDialog();
+            updateGroupsList();
+            alert('グループを保存しました');
+        }
+
+        // 選択した座標をグループから削除
+        function deleteSelectedCoordinatesFromGroup() {
+            if (editGroupSelectedCoordIds.size === 0) {
+                alert('削除する座標を選択してください');
+                return;
+            }
+
+            const group = coordinateGroups.find(g => g.id === editingGroupId);
+            if (!group) return;
+
+            const confirmDelete = confirm(`選択した${editGroupSelectedCoordIds.size}件の座標をこのグループから削除しますか？\n（座標自体は削除されません）`);
+            if (!confirmDelete) return;
+
+            // グループから座標を削除
+            group.coordinateIds = group.coordinateIds.filter(id => !editGroupSelectedCoordIds.has(id));
+
+            // Firebaseに保存
+            saveGroupToFirebase(group).catch(error => {
+                console.error('グループの保存エラー:', error);
+            });
+
+            // ダイアログを再表示
+            editGroup(editingGroupId);
+            updateGroupsList();
+        }
+
+        // グループを完全に削除
+        function deleteGroupCompletely() {
+            const group = coordinateGroups.find(g => g.id === editingGroupId);
+            if (!group) return;
+
+            const confirmDelete = confirm(`グループ "${group.name}" を完全に削除しますか？\n（座標自体は削除されません）`);
+            if (!confirmDelete) return;
+
+            // グループを削除
+            coordinateGroups = coordinateGroups.filter(g => g.id !== editingGroupId);
+
+            // Firebaseから削除
+            deleteGroupFromFirebase(editingGroupId).catch(error => {
+                console.error('グループの削除エラー:', error);
+            });
+
+            closeGroupEditDialog();
+            updateGroupsList();
+            updateCoordinatesList();
+            alert('グループを削除しました');
+        }
+
+        // 座標ジャンプダイアログを開く
+        function openJumpDialog() {
+            document.getElementById('jumpDialog').style.display = 'flex';
+            // 現在の中央座標を入力欄に設定
+            document.getElementById('jumpDialogX').value = Math.round(offsetX);
+            document.getElementById('jumpDialogY').value = Math.round(offsetY);
+        }
+
+        // 座標ジャンプダイアログを閉じる
+        function closeJumpDialog() {
+            document.getElementById('jumpDialog').style.display = 'none';
+        }
+
+        // 座標ジャンプを実行
+        function executeJump() {
+            const x = parseInt(document.getElementById('jumpDialogX').value);
+            const y = parseInt(document.getElementById('jumpDialogY').value);
+
+            if (isNaN(x) || isNaN(y)) {
+                alert('X座標とY座標を入力してください');
+                return;
+            }
+
+            // 座標を移動
+            offsetX = x;
+            offsetY = y;
+
+            // 最小倍率を確保
+            scale = Math.max(scale, 10);
+
+            // マップを再描画
+            drawMap();
+
+            // ダイアログを閉じる
+            closeJumpDialog();
+        }
+
+        // グループ削除
+        function deleteGroup(groupId) {
+            if (groupId === 'default') {
+                alert('デフォルトグループは削除できません');
+                return;
+            }
+
+            if (confirm('このグループを削除しますか?(座標自体は削除されません)')) {
+                coordinateGroups = coordinateGroups.filter(g => g.id !== groupId);
+                if (expandedGroupId === groupId) {
+                    expandedGroupId = null;
+                    groupFilterActive = false;
+                }
+
+                // Firebaseから削除
+                deleteGroupFromFirebase(groupId).catch(error => {
+                    console.error('グループの削除エラー:', error);
+                });
+
+                updateGroupsList();
+                updateCoordinatesList();
+                updateStats();
+            }
+        }
+        
+        // 障害物タイプ選択
+        function selectObstacleType(type) {
+            if (currentMode !== 'input' && currentMode !== 'delete') {
+                alert('入力モードまたは削除モードを選択してください');
+                return;
+            }
+            
+            selectedObstacleType = selectedObstacleType === type ? null : type;
+            
+            document.querySelectorAll('.obstacle-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            if (selectedObstacleType) {
+                const btnId = type === 'rock' ? 'obstacleRock' : `obstacle_${type}`;
+                const btn = document.getElementById(btnId);
+                if (btn) btn.classList.add('selected');
+            }
+        }
+        
+        // カスタム障害物フォーム表示
+        function showCustomObstacleForm() {
+            document.getElementById('customObstacleFormContainer').style.display = 'block';
+            isCreatingCustomObstacle = false;
+            customObstacleInProgress = null;
+            document.getElementById('tempShapeMessage').style.display = 'none';
+        }
+        
+        // カスタム障害物フォームをキャンセル
+        function cancelCustomObstacleForm() {
+            document.getElementById('customObstacleFormContainer').style.display = 'none';
+            document.getElementById('customObstacleName').value = '';
+            isCreatingCustomObstacle = false;
+            customObstacleInProgress = null;
+            tempSelection.clear();
+            document.getElementById('tempShapeMessage').style.display = 'none';
+            drawMap();
+        }
+        
+        // カスタム障害物作成
+        function createCustomObstacle() {
+            const name = document.getElementById('customObstacleName').value.trim();
+            const placementType = document.getElementById('customObstaclePlacementType').value;
+            const color = getSelectedColor();
+            
+            if (!name) {
+                alert('障害物名を入力してください');
+                return;
+            }
+            
+            if (placementType === 'tap') {
+                if (!isCreatingCustomObstacle) {
+                    isCreatingCustomObstacle = true;
+                    customObstacleInProgress = {
+                        name: name,
+                        color: color,
+                        placementType: placementType
+                    };
+                    
+                    document.getElementById('tempShapeMessage').style.display = 'block';
+                    changeMode('input');
+                    selectedObstacleType = 'temp_custom';
+                    return;
+                } else {
+                    if (tempSelection.size === 0) {
+                        alert('障害物の形状を入力してください');
+                        return;
+                    }
+                    
+                    const customId = `custom_${Date.now()}`;
+                    
+                    const firstKey = Array.from(tempSelection)[0];
+                    const [fx, fy] = firstKey.split(',').map(Number);
+                    const shape = Array.from(tempSelection).map(key => {
+                        const [x, y] = key.split(',').map(Number);
+                        return `${x - fx},${y - fy}`;
+                    });
+                    
+                    customObstacles.push({
+                        id: customId,
+                        name: name,
+                        color: customObstacleInProgress.color,
+                        shape: shape
+                    });
+                    
+                    tempSelection.clear();
+                    
+                    updateCustomObstacleButtons();
+                    cancelCustomObstacleForm();
+                    updateStats();
+                    drawMap();
+                    
+                    alert(`生成されたアイテム形状を、名称「${name}」としてテンプレート保管し、マップ上に生成されたアイテムはクリアしました。\n障害物管理欄から使用可能です。`);
+                    return;
+                }
+            }
+            
+            const customId = `custom_${Date.now()}`;
+            customObstacles.push({
+                id: customId,
+                name: name,
+                color: color,
+                shape: ['0,0']
+            });
+            
+            updateCustomObstacleButtons();
+            cancelCustomObstacleForm();
+            
+            alert(`カスタム障害物「${name}」をテンプレートとして作成しました。\n障害物管理欄から使用可能です。`);
+        }
+        
+        // カスタム障害物ボタンを更新
+        function updateCustomObstacleButtons() {
+            const container = document.getElementById('customObstacleButtons');
+            container.innerHTML = '';
+            
+            customObstacles.forEach(obstacle => {
+                const div = document.createElement('div');
+                div.className = 'custom-obstacle-display';
+                
+                const displayColor = obstacle.color;
+                
+                div.innerHTML = `
+                    <div class="color-swatch" style="background-color: ${displayColor}"></div>
+                    <button onclick="selectObstacleType('${obstacle.id}')" class="obstacle-btn" id="obstacle_${obstacle.id}" style="flex: 1;">
+                        ${obstacle.name}
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // 障害物のグループ化
+        function groupObstacles() {
+            const typeGroups = {};
+            
+            obstacles.forEach(obstacle => {
+                if (!typeGroups[obstacle.type]) {
+                    typeGroups[obstacle.type] = [];
+                }
+                obstacle.cells.forEach(cell => {
+                    typeGroups[obstacle.type].push(cell);
+                });
+            });
+            
+            obstacles = [];
+            
+            for (const [type, cells] of Object.entries(typeGroups)) {
+                const visited = new Set();
+                const cellSet = new Set(cells);
+                
+                cells.forEach(cell => {
+                    if (visited.has(cell)) return;
+                    
+                    const component = [];
+                    const queue = [cell];
+                    
+                    while (queue.length > 0) {
+                        const current = queue.shift();
+                        if (visited.has(current)) continue;
+                        
+                        visited.add(current);
+                        component.push(current);
+                        
+                        const [x, y] = current.split(',').map(Number);
+                        const neighbors = [
+                            `${x+1},${y}`,
+                            `${x-1},${y}`,
+                            `${x},${y+1}`,
+                            `${x},${y-1}`
+                        ];
+                        
+                        neighbors.forEach(neighbor => {
+                            if (cellSet.has(neighbor) && !visited.has(neighbor)) {
+                                queue.push(neighbor);
+                            }
+                        });
+                    }
+                    
+                    if (component.length > 0) {
+                        obstacles.push({
+                            id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000000),
+                            type: type,
+                            cells: component
+                        });
+                    }
+                });
+            }
+        }
+        
+        // 障害物リスト更新
+        function updateObstaclesList() {
+            const container = document.getElementById('obstacleList');
+            container.innerHTML = '';
+            
+            if (obstacles.length > 0) {
+                const selectAllDiv = document.createElement('div');
+                selectAllDiv.style.cssText = 'background: #e3f2fd; padding: 8px; margin-bottom: 8px; border-radius: 4px;';
+                selectAllDiv.innerHTML = `
+                    <label style="cursor: pointer; font-weight: bold;">
+                        <input type="checkbox" id="selectAllObstacles" onchange="toggleSelectAllObstacles(this.checked)">
+                        すべて選択
+                    </label>
+                `;
+                container.appendChild(selectAllDiv);
+            }
+            
+            obstacles.forEach((obstacle, index) => {
+                const div = document.createElement('div');
+                div.className = 'obstacle-item';
+                
+                let obstacleName = obstacleNames[obstacle.type] || obstacle.type;
+                const customObstacle = customObstacles.find(o => o.id === obstacle.type);
+                if (customObstacle) {
+                    obstacleName = customObstacle.name;
+                }
+                
+                div.innerHTML = `
+                    <label style="display: flex; align-items: center; flex: 1; cursor: pointer;">
+                        <input type="checkbox" ${selectedObstacleIds.has(obstacle.id) ? 'checked' : ''}
+                               onchange="toggleObstacleSelection('${obstacle.id}', this.checked)">
+                        <span>${obstacleName} #${index + 1} (${obstacle.cells.length}マス)</span>
+                    </label>
+                    <div class="item-actions">
+                        <button onclick="deleteObstacleItem('${obstacle.id}')"
+                                style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">🗑️</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // すべての障害物を選択/解除
+        function toggleSelectAllObstacles(checked) {
+            if (checked) {
+                obstacles.forEach(o => selectedObstacleIds.add(o.id));
+            } else {
+                selectedObstacleIds.clear();
+            }
+            updateObstaclesList();
+        }
+        
+        // 障害物の選択トグル
+        function toggleObstacleSelection(id, checked) {
+            if (checked) {
+                selectedObstacleIds.add(id);
+            } else {
+                selectedObstacleIds.delete(id);
+            }
+        }
+        
+        // 障害物アイテムの削除
+        function deleteObstacleItem(id) {
+            if (confirm('この障害物を削除しますか?')) {
+                obstacles = obstacles.filter(o => o.id !== id);
+                selectedObstacleIds.delete(id);
+
+                // Firebaseに保存
+                saveObstaclesToFirebase().catch(error => {
+                    console.error('障害物の保存エラー:', error);
+                });
+
+                updateObstaclesList();
+                updateStats();
+                drawMap();
+            }
+        }
+        
+        // 選択された障害物の削除
+        function deleteSelectedObstacles() {
+            if (selectedObstacleIds.size === 0) {
+                alert('障害物を選択してください');
+                return;
+            }
+
+            if (confirm(`選択された${selectedObstacleIds.size}件の障害物を削除しますか?`)) {
+                obstacles = obstacles.filter(o => !selectedObstacleIds.has(o.id));
+                selectedObstacleIds.clear();
+
+                // Firebaseに保存
+                saveObstaclesToFirebase().catch(error => {
+                    console.error('障害物の保存エラー:', error);
+                });
+
+                updateObstaclesList();
+                updateStats();
+                drawMap();
+            }
+        }
+        
+        // ズーム
+        function zoomIn() {
+            scale = Math.min(scale * 1.5, 100); // 最大倍率を100倍に設定
+            drawMap();
+        }
+        
+        function zoomOut() {
+            scale = Math.max(scale / 1.5, 0.5);
+            drawMap();
+        }
+        
+        // 区切り文字の解説表示
+        function showDelimiterHelp() {
+            const helpText = `【区切り文字とは？】
+
+複数の座標を一度に入力する際、座標と座標の間を区切るための文字です。
+
+【使用例】
+・「、」（読点）で区切る場合：
+  城A@100 200、城B@150 250、城C@200 300
+
+・「|」（縦棒）で区切る場合：
+  城A@100 200|城B@150 250|城C@200 300
+
+・空欄の場合：
+  改行で自動的に区切られます
+
+【よく使われる区切り文字】
+、（読点）、。（句点）、|（縦棒）、:（コロン）など`;
+
+            alert(helpText);
+        }
+
+        // クリップボードにコピー
+        function copyDataToClipboard() {
+            const selectedCount = selectedCoordinateIds.size;
+            let text = '';
+
+            if (selectedCount === 0) {
+                const exportAll = confirm('選択済み座標がありません。全座標をコピーしますか？');
+                if (!exportAll) return;
+
+                savedCoordinates.forEach(coord => {
+                    text += `${coord.name}@${coord.x} ${coord.y}\n`;
+                });
+            } else {
+                const selectedCoords = savedCoordinates.filter(c => selectedCoordinateIds.has(c.id));
+                selectedCoords.forEach(coord => {
+                    text += `${coord.name}@${coord.x} ${coord.y}\n`;
+                });
+            }
+
+            // クリップボードにコピー
+            navigator.clipboard.writeText(text).then(() => {
+                alert('データをクリップボードにコピーしました！');
+            }).catch(err => {
+                console.error('クリップボードへのコピーに失敗しました:', err);
+                alert('クリップボードへのコピーに失敗しました');
+            });
+        }
+
+        // CSV出力
+        function exportToCSV() {
+            const selectedCount = selectedCoordinateIds.size;
+            let coords;
+
+            if (selectedCount === 0) {
+                const exportAll = confirm('選択済み座標がありません。全座標をCSV出力しますか？');
+                if (!exportAll) return;
+                coords = savedCoordinates;
+            } else {
+                coords = savedCoordinates.filter(c => selectedCoordinateIds.has(c.id));
+            }
+
+            // CSVデータ作成（名前@X座標 Y座標形式）
+            let csv = '';
+            coords.forEach(coord => {
+                csv += `${coord.name}@${coord.x} ${coord.y}\n`;
+            });
+
+            // CSVファイルとしてダウンロード
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = selectedCount === 0 ? 'all_coordinates.csv' : 'selected_coordinates.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // 修正2: 全画面表示の切り替え - リサイズ処理の改善
+        function toggleFullscreen() {
+            const section = document.querySelector('.map-section');
+            const btn = document.getElementById('fullscreenBtn');
+
+            if (!section) {
+                alert('マップセクションが見つかりません');
+                return;
+            }
+
+            if (!document.fullscreenElement) {
+                section.requestFullscreen().then(() => {
+                    section.classList.add('fullscreen-container');
+                    btn.textContent = '✕ 全画面解除';
+
+                    // 修正2: 全画面表示時のリサイズを強制実行
+                    setTimeout(() => {
+                        resizeCanvas();
+                        drawMap();
+                    }, 100);
+                }).catch(err => {
+                    alert('全画面表示に失敗しました: ' + err.message);
+                });
+            } else {
+                document.exitFullscreen().then(() => {
+                    section.classList.remove('fullscreen-container');
+                    btn.textContent = '🖼️ 全画面表示';
+
+                    // 修正2: 全画面解除時のリサイズを強制実行
+                    setTimeout(() => {
+                        resizeCanvas();
+                        drawMap();
+                    }, 100);
+                });
+            }
+        }
+
+        // 全画面表示の変更を監視
+        document.addEventListener('fullscreenchange', () => {
+            const section = document.querySelector('.map-section');
+            const btn = document.getElementById('fullscreenBtn');
+            if (!document.fullscreenElement && section) {
+                section.classList.remove('fullscreen-container');
+                btn.textContent = '🖼️ 全画面表示';
+                resizeCanvas();
+            }
+        });
+        
+        // 修正4: 統計の更新 - 居住範囲占有率の追加
+        function updateStats() {
+            document.getElementById('coordCount').textContent = savedCoordinates.length;
+            document.getElementById('obstacleCount').textContent = obstacles.length;
+            document.getElementById('groupCount').textContent = coordinateGroups.length;
+            document.getElementById('selectedCount').textContent = selectedCoordinateIds.size;
+            
+            // 修正4: 居住範囲占有率の計算
+            const primeZoneTotalCells = (primeZone.maxX - primeZone.minX + 1) * (primeZone.maxY - primeZone.minY + 1);
+            
+            // 障害物のマス数を計算(一級地帯内のみ)
+            let obstacleCells = new Set();
+            obstacles.forEach(obstacle => {
+                obstacle.cells.forEach(cell => {
+                    const [x, y] = cell.split(',').map(Number);
+                    if (x >= primeZone.minX && x <= primeZone.maxX && 
+                        y >= primeZone.minY && y <= primeZone.maxY) {
+                        obstacleCells.add(cell);
+                    }
+                });
+            });
+            
+            // 城のマス数を計算(一級地帯内のみ)
+            let castleCells = new Set();
+            castles.forEach(castle => {
+                for (let dx = -8; dx <= 8; dx++) {
+                    for (let dy = -8; dy <= 8; dy++) {
+                        const x = castle.x + dx;
+                        const y = castle.y + dy;
+                        if (x >= primeZone.minX && x <= primeZone.maxX && 
+                            y >= primeZone.minY && y <= primeZone.maxY) {
+                            castleCells.add(`${x},${y}`);
+                        }
+                    }
+                }
+            });
+            
+            // 利用可能マス数 = 一級地帯全体 - 障害物 - 城
+            const availableCells = primeZoneTotalCells - obstacleCells.size - castleCells.size;
+            
+            // 居住範囲のマス数を計算(一級地帯内、かつ表示中の座標のみ)
+            let residenceCells = new Set();
+            savedCoordinates.forEach(coord => {
+                if (hiddenCoordinateIds.has(coord.id)) return;
+                
+                for (let dx = -10; dx <= 10; dx++) {
+                    for (let dy = -10; dy <= 10; dy++) {
+                        const x = coord.x + dx;
+                        const y = coord.y + dy;
+                        if (x >= primeZone.minX && x <= primeZone.maxX && 
+                            y >= primeZone.minY && y <= primeZone.maxY) {
+                            residenceCells.add(`${x},${y}`);
+                        }
+                    }
+                }
+            });
+            
+            // 占有率を計算
+            const occupancyRate = availableCells > 0 ? (residenceCells.size / availableCells * 100).toFixed(1) : 0;
+            document.getElementById('occupancyRate').textContent = `${occupancyRate}%`;
+        }
+        
+        // ページ読み込み時に初期化
+        window.addEventListener('load', init);
+    </script>
+
+    <!-- グループ編集ダイアログ -->
+    <div id="groupEditDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; padding: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-top: 0;">グループを編集</h3>
+
+            <label style="display: block; margin-bottom: 8px; font-weight: bold;">グループ名:</label>
+            <input type="text" id="editGroupName" style="width: 100%; padding: 8px; margin-bottom: 16px;">
+
+            <label style="display: block; margin-bottom: 8px; font-weight: bold;">登録座標:</label>
+            <div id="editGroupCoordsList" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px; margin-bottom: 16px;">
+                <!-- 座標リストがここに表示されます -->
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="saveGroupEdits()" style="flex: 1; background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">💾 保存</button>
+                <button onclick="deleteSelectedCoordinatesFromGroup()" style="flex: 1; background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">🗑️ 選択を削除</button>
+                <button onclick="deleteGroupCompletely()" style="flex: 1; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">❌ グループ削除</button>
+                <button onclick="closeGroupEditDialog()" class="secondary" style="flex: 1;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
