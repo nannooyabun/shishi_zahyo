@@ -260,25 +260,27 @@ function resizeCanvas() {
         displayWidth = window.innerWidth;
         displayHeight = window.innerHeight;
     } else {
-        // 通常表示時は親要素のサイズを使用
-        // マス目を正方形に保つため、アスペクト比を考慮
-        const availableWidth = rect.width;
-        const availableHeight = rect.height;
+        // 通常表示時は、コンテナサイズから適切な寸法を計算
+        // パディングとマージンを考慮
+        const availableWidth = rect.width - 40;
+        const availableHeight = rect.height - 40;
 
-        // 正方形のマス目を維持するため、width と height の小さい方に合わせる
-        const size = Math.min(availableWidth, availableHeight);
-        displayWidth = availableWidth;
-        displayHeight = availableHeight;
+        // アスペクト比を維持して、正方形に近い形にする
+        // コンテナ内に収まる最大サイズを計算
+        const maxSize = Math.min(availableWidth, availableHeight, 800);
+
+        displayWidth = maxSize;
+        displayHeight = maxSize;
     }
 
+    // canvas.width/heightの設定でコンテキストは自動リセットされる
     canvas.width = displayWidth * dpr;
     canvas.height = displayHeight * dpr;
 
     canvas.style.width = displayWidth + 'px';
     canvas.style.height = displayHeight + 'px';
 
-    // 変換行列をリセットしてからDPRスケールを設定
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // DPRスケールを適用
     ctx.scale(dpr, dpr);
 
     drawMap();
@@ -805,10 +807,16 @@ function toggleFullscreen() {
 
 // 全画面変更イベントをリッスン
 document.addEventListener('fullscreenchange', () => {
-    // 全画面表示の切り替え後、DOMが安定するまで待つ
+    const section = document.querySelector('.map-section');
+    if (!document.fullscreenElement && section) {
+        section.classList.remove('fullscreen-container');
+        const btn = document.getElementById('fullscreenBtn');
+        if (btn) btn.textContent = '🖼️ 全画面表示';
+    }
+    // 全画面解除時は少し待ってからリサイズ（レイアウトの再計算を待つ）
     setTimeout(() => {
         resizeCanvas();
-    }, 200);
+    }, 150);
 });
 
 // ========================================
