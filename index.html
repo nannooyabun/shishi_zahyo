@@ -1121,14 +1121,6 @@
                         <button onclick="cancelAdjustMode()" class="secondary">キャンセル</button>
                     </div>
 
-                    <!-- 座標ジャンプパネル -->
-                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
-                        <label style="font-weight: bold;">📍 座標ジャンプ:</label>
-                        <input type="number" id="jumpX" placeholder="X" style="width: 80px; padding: 6px;">
-                        <input type="number" id="jumpY" placeholder="Y" style="width: 80px; padding: 6px;">
-                        <button onclick="jumpToInputCoordinate()" style="width: auto; padding: 6px 16px;">ジャンプ</button>
-                    </div>
-
                     <canvas id="mapCanvas"></canvas>
 
                     <!-- ズームボタン（縦並び・右側中央） -->
@@ -1143,8 +1135,10 @@
                         <button onclick="toggleFullscreen()" id="fullscreenBtn">🖼️ 全画面表示</button>
                     </div>
 
-                    <!-- マップ中央座標表示（下側中央） -->
-                    <div id="centerCoordDisplay" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(0, 0, 0, 0.75); color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px;">
+                    <!-- マップ中央座標表示（下側中央） - クリックで座標ジャンプダイアログを表示 -->
+                    <div id="centerCoordDisplay" onclick="openJumpDialog()" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(0, 0, 0, 0.75); color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; cursor: pointer; transition: background 0.2s;"
+                         onmouseover="this.style.background='rgba(33, 150, 243, 0.9)'"
+                         onmouseout="this.style.background='rgba(0, 0, 0, 0.75)'">
                         中央: @0 0
                     </div>
                 </div>
@@ -3955,7 +3949,44 @@
             updateCoordinatesList();
             alert('グループを削除しました');
         }
-        
+
+        // 座標ジャンプダイアログを開く
+        function openJumpDialog() {
+            document.getElementById('jumpDialog').style.display = 'flex';
+            // 現在の中央座標を入力欄に設定
+            document.getElementById('jumpDialogX').value = Math.round(offsetX);
+            document.getElementById('jumpDialogY').value = Math.round(offsetY);
+        }
+
+        // 座標ジャンプダイアログを閉じる
+        function closeJumpDialog() {
+            document.getElementById('jumpDialog').style.display = 'none';
+        }
+
+        // 座標ジャンプを実行
+        function executeJump() {
+            const x = parseInt(document.getElementById('jumpDialogX').value);
+            const y = parseInt(document.getElementById('jumpDialogY').value);
+
+            if (isNaN(x) || isNaN(y)) {
+                alert('X座標とY座標を入力してください');
+                return;
+            }
+
+            // 座標を移動
+            offsetX = x;
+            offsetY = y;
+
+            // 最小倍率を確保
+            scale = Math.max(scale, 10);
+
+            // マップを再描画
+            drawMap();
+
+            // ダイアログを閉じる
+            closeJumpDialog();
+        }
+
         // グループ削除
         function deleteGroup(groupId) {
             if (groupId === 'default') {
@@ -4273,7 +4304,7 @@
         
         // ズーム
         function zoomIn() {
-            scale = Math.min(scale * 1.5, 100); // 最大倍率を100倍に引き上げ
+            scale = Math.min(scale * 1.5, 800); // 最大倍率を800倍に引き上げ
             drawMap();
         }
         
@@ -4493,6 +4524,27 @@
                 <button onclick="deleteSelectedCoordinatesFromGroup()" style="flex: 1; background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">🗑️ 選択を削除</button>
                 <button onclick="deleteGroupCompletely()" style="flex: 1; background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">❌ グループ削除</button>
                 <button onclick="closeGroupEditDialog()" class="secondary" style="flex: 1;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 座標ジャンプダイアログ -->
+    <div id="jumpDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; padding: 20px; max-width: 400px; width: 90%;">
+            <h3 style="margin-top: 0;">📍 座標にジャンプ</h3>
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">X座標:</label>
+                    <input type="number" id="jumpDialogX" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: bold;">Y座標:</label>
+                    <input type="number" id="jumpDialogY" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="executeJump()" style="flex: 1; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">🚀 ジャンプ</button>
+                <button onclick="closeJumpDialog()" class="secondary" style="flex: 1;">キャンセル</button>
             </div>
         </div>
     </div>
