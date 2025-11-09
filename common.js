@@ -261,14 +261,12 @@ function resizeCanvas() {
         displayHeight = window.innerHeight;
     } else {
         // 通常表示時は、固定配置でない要素の高さのみ計算
-        // position: absolute の要素（ズームボタン、全画面ボタン、座標表示）は
+        // position: absolute の要素（グリッド切替、ズームボタン、全画面ボタン、座標表示）は
         // Canvasの上に重なるので計算から除外
         const h2 = container.querySelector('h2');
-        const gridDisplay = container.querySelector('.grid-display');
 
         let occupiedHeight = 0;
         if (h2) occupiedHeight += h2.offsetHeight + 15; // margin-bottom含む
-        if (gridDisplay) occupiedHeight += gridDisplay.offsetHeight + 15; // margin-bottom含む
 
         // コンテナのパディング（上下20px × 2 = 40px）
         const containerPadding = 40;
