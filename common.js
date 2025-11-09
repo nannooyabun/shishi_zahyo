@@ -228,8 +228,27 @@ function resizeCanvas() {
     if (!canvas) return;
     const container = canvas.parentElement;
     const rect = container.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    // 全画面表示時は画面サイズを使用
+    let displayWidth, displayHeight;
+    if (document.fullscreenElement) {
+        displayWidth = window.innerWidth;
+        displayHeight = window.innerHeight;
+    } else {
+        displayWidth = rect.width;
+        displayHeight = rect.height;
+    }
+
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+
+    ctx.scale(dpr, dpr);
+
     drawMap();
 }
 
@@ -237,180 +256,272 @@ function resizeCanvas() {
 function drawMap() {
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+
+    ctx.clearRect(0, 0, width, height);
 
     // 背景
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(0, 0, width, height);
 
+    // 一級地帯の背景
+    drawPrimeZoneBackground();
+
+    // グリッド描画
     if (gridType === 'diamond') {
         drawDiamondGrid();
     } else {
         drawSquareGrid();
     }
 
-    drawCastles();
+    // 城の描画
+    castles.forEach(castle => {
+        drawCastle(castle);
+    });
+
+    // 障害物描画
     drawObstacles();
+
+    // 保存済み座標描画
     drawSavedCoordinates();
+
+    // 座標調整モード
     drawAdjustModeCoordinates();
+
+    // ドラッグ選択
     drawDragSelection();
+
+    // 範囲選択
     drawRangeSelection();
+
+    // 中央座標表示更新
     updateCenterCoordDisplay();
 }
 
 // 正方形グリッド描画
 function drawSquareGrid() {
-    const minX = Math.floor(offsetX - canvas.height / (2 * scale));
-    const maxX = Math.ceil(offsetX + canvas.height / (2 * scale));
-    const minY = Math.floor(offsetY - canvas.width / (2 * scale));
-    const maxY = Math.ceil(offsetY + canvas.width / (2 * scale));
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
 
-    ctx.strokeStyle = '#ddd';
     ctx.lineWidth = 1;
 
-    for (let x = minX; x <= maxX; x++) {
-        const p1 = worldToScreen(x, minY);
-        const p2 = worldToScreen(x, maxY);
+    const visibleMinX = Math.floor(offsetX - height / scale / 2);
+    const visibleMaxX = Math.ceil(offsetX + height / scale / 2);
+    const visibleMinY = Math.floor(offsetY - width / scale / 2);
+    const visibleMaxY = Math.ceil(offsetY + width / scale / 2);
+
+    // 1マスごとの細い線と10マスごとの太い線を描画
+    for (let x = Math.max(worldBounds.minX, visibleMinX); x <= Math.min(worldBounds.maxX, visibleMaxX) + 1; x++) {
+        const pos1 = worldToScreen(x, visibleMinY);
+        const pos2 = worldToScreen(x, visibleMaxY);
+
+        ctx.strokeStyle = x % 10 === 0 ? '#888' : '#d0d0d0';
+        ctx.lineWidth = x % 10 === 0 ? 2 : 1;
         ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
+        ctx.moveTo(Math.floor(pos1.x) + 0.5, Math.floor(pos1.y) + 0.5);
+        ctx.lineTo(Math.floor(pos2.x) + 0.5, Math.floor(pos2.y) + 0.5);
         ctx.stroke();
     }
 
-    for (let y = minY; y <= maxY; y++) {
-        const p1 = worldToScreen(minX, y);
-        const p2 = worldToScreen(maxX, y);
+    for (let y = Math.max(worldBounds.minY, visibleMinY); y <= Math.min(worldBounds.maxY, visibleMaxY) + 1; y++) {
+        const pos1 = worldToScreen(visibleMinX, y);
+        const pos2 = worldToScreen(visibleMaxX, y);
+
+        ctx.strokeStyle = y % 10 === 0 ? '#888' : '#d0d0d0';
+        ctx.lineWidth = y % 10 === 0 ? 2 : 1;
         ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
+        ctx.moveTo(Math.floor(pos1.x) + 0.5, Math.floor(pos1.y) + 0.5);
+        ctx.lineTo(Math.floor(pos2.x) + 0.5, Math.floor(pos2.y) + 0.5);
         ctx.stroke();
     }
 
-    // 一級地帯を強調
+    // 一級地帯の枠を強調
     ctx.strokeStyle = '#ff6b6b';
     ctx.lineWidth = 3;
-    const primeCorners = [
-        worldToScreen(primeZone.minX, primeZone.minY),
-        worldToScreen(primeZone.minX, primeZone.maxY),
-        worldToScreen(primeZone.maxX, primeZone.maxY),
-        worldToScreen(primeZone.maxX, primeZone.minY)
-    ];
+    const topLeft = worldToScreen(primeZone.minX, primeZone.minY);
+    const topRight = worldToScreen(primeZone.minX, primeZone.maxY + 1);
+    const bottomRight = worldToScreen(primeZone.maxX + 1, primeZone.maxY + 1);
+    const bottomLeft = worldToScreen(primeZone.maxX + 1, primeZone.minY);
+
     ctx.beginPath();
-    ctx.moveTo(primeCorners[0].x, primeCorners[0].y);
-    ctx.lineTo(primeCorners[1].x, primeCorners[1].y);
-    ctx.lineTo(primeCorners[2].x, primeCorners[2].y);
-    ctx.lineTo(primeCorners[3].x, primeCorners[3].y);
+    ctx.moveTo(topLeft.x, topLeft.y);
+    ctx.lineTo(topRight.x, topRight.y);
+    ctx.lineTo(bottomRight.x, bottomRight.y);
+    ctx.lineTo(bottomLeft.x, bottomLeft.y);
     ctx.closePath();
     ctx.stroke();
-
-    // 10マスごとに太線
-    ctx.strokeStyle = '#999';
-    ctx.lineWidth = 2;
-    for (let x = Math.floor(minX / 10) * 10; x <= maxX; x += 10) {
-        const p1 = worldToScreen(x, minY);
-        const p2 = worldToScreen(x, maxY);
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
-    }
-    for (let y = Math.floor(minY / 10) * 10; y <= maxY; y += 10) {
-        const p1 = worldToScreen(minX, y);
-        const p2 = worldToScreen(maxX, y);
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
-    }
 }
 
 // ひし形グリッド描画
 function drawDiamondGrid() {
-    const screenCenterX = canvas.width / 2;
-    const screenCenterY = canvas.height / 2;
-    const maxDist = Math.max(canvas.width, canvas.height);
-    const range = Math.ceil(maxDist / scale) + 2;
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
 
-    ctx.strokeStyle = '#ddd';
     ctx.lineWidth = 1;
 
-    // グリッド線を描画
-    for (let i = -range; i <= range; i++) {
-        const wx1 = offsetX + i;
-        const wy1 = offsetY - range;
-        const wy2 = offsetY + range;
-        const p1 = worldToScreen(wx1, wy1);
-        const p2 = worldToScreen(wx1, wy2);
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
+    const visibleRange = Math.max(width, height) / scale + 50;
+    const visibleMinX = Math.floor(offsetX - visibleRange);
+    const visibleMaxX = Math.ceil(offsetX + visibleRange);
+    const visibleMinY = Math.floor(offsetY - visibleRange);
+    const visibleMaxY = Math.ceil(offsetY + visibleRange);
 
-        const wx2 = offsetX - range;
-        const wx3 = offsetX + range;
-        const wy3 = offsetY + i;
-        const p3 = worldToScreen(wx2, wy3);
-        const p4 = worldToScreen(wx3, wy3);
-        ctx.beginPath();
-        ctx.moveTo(p3.x, p3.y);
-        ctx.lineTo(p4.x, p4.y);
-        ctx.stroke();
+    // グリッド線を描画
+    for (let x = Math.max(worldBounds.minX, visibleMinX); x <= Math.min(worldBounds.maxX, visibleMaxX) + 1; x++) {
+        for (let y = Math.max(worldBounds.minY, visibleMinY); y <= Math.min(worldBounds.maxY, visibleMaxY) + 1; y++) {
+            const pos = worldToScreen(x, y);
+
+            if (pos.x < -100 || pos.x > width + 100 || pos.y < -100 || pos.y > height + 100) {
+                continue;
+            }
+
+            ctx.strokeStyle = (x % 10 === 0 || y % 10 === 0) ? '#888' : '#d0d0d0';
+            ctx.lineWidth = (x % 10 === 0 || y % 10 === 0) ? 2 : 1;
+
+            // 右方向の線
+            if (y <= Math.min(worldBounds.maxY, visibleMaxY)) {
+                const posRight = worldToScreen(x, y + 1);
+                ctx.beginPath();
+                ctx.moveTo(Math.floor(pos.x) + 0.5, Math.floor(pos.y) + 0.5);
+                ctx.lineTo(Math.floor(posRight.x) + 0.5, Math.floor(posRight.y) + 0.5);
+                ctx.stroke();
+            }
+
+            // 下方向の線
+            if (x <= Math.min(worldBounds.maxX, visibleMaxX)) {
+                const posDown = worldToScreen(x + 1, y);
+                ctx.beginPath();
+                ctx.moveTo(Math.floor(pos.x) + 0.5, Math.floor(pos.y) + 0.5);
+                ctx.lineTo(Math.floor(posDown.x) + 0.5, Math.floor(posDown.y) + 0.5);
+                ctx.stroke();
+            }
+        }
     }
 
-    // 一級地帯を強調
+    // 一級地帯の枠を強調
     ctx.strokeStyle = '#ff6b6b';
     ctx.lineWidth = 3;
-    const primeCorners = [
-        worldToScreen(primeZone.minX, primeZone.minY),
-        worldToScreen(primeZone.minX, primeZone.maxY),
-        worldToScreen(primeZone.maxX, primeZone.maxY),
-        worldToScreen(primeZone.maxX, primeZone.minY)
-    ];
+    const topLeft = worldToScreen(primeZone.minX, primeZone.minY);
+    const topRight = worldToScreen(primeZone.minX, primeZone.maxY + 1);
+    const bottomRight = worldToScreen(primeZone.maxX + 1, primeZone.maxY + 1);
+    const bottomLeft = worldToScreen(primeZone.maxX + 1, primeZone.minY);
+
     ctx.beginPath();
-    ctx.moveTo(primeCorners[0].x, primeCorners[0].y);
-    ctx.lineTo(primeCorners[1].x, primeCorners[1].y);
-    ctx.lineTo(primeCorners[2].x, primeCorners[2].y);
-    ctx.lineTo(primeCorners[3].x, primeCorners[3].y);
+    ctx.moveTo(topLeft.x, topLeft.y);
+    ctx.lineTo(topRight.x, topRight.y);
+    ctx.lineTo(bottomRight.x, bottomRight.y);
+    ctx.lineTo(bottomLeft.x, bottomLeft.y);
     ctx.closePath();
     ctx.stroke();
+}
 
-    // 10マスごとに太線
-    ctx.strokeStyle = '#999';
-    ctx.lineWidth = 2;
-    const baseX = Math.floor(offsetX / 10) * 10;
-    const baseY = Math.floor(offsetY / 10) * 10;
-    for (let i = -Math.ceil(range / 10); i <= Math.ceil(range / 10); i++) {
-        const wx = baseX + i * 10;
-        const p1 = worldToScreen(wx, offsetY - range);
-        const p2 = worldToScreen(wx, offsetY + range);
+// 一級地帯の背景描画
+function drawPrimeZoneBackground() {
+    if (gridType === 'diamond') {
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
         ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
 
-        const wy = baseY + i * 10;
-        const p3 = worldToScreen(offsetX - range, wy);
-        const p4 = worldToScreen(offsetX + range, wy);
-        ctx.beginPath();
-        ctx.moveTo(p3.x, p3.y);
-        ctx.lineTo(p4.x, p4.y);
-        ctx.stroke();
+        const topLeft = worldToScreen(primeZone.minX, primeZone.minY);
+        const topRight = worldToScreen(primeZone.minX, primeZone.maxY + 1);
+        const bottomRight = worldToScreen(primeZone.maxX + 1, primeZone.maxY + 1);
+        const bottomLeft = worldToScreen(primeZone.maxX + 1, primeZone.minY);
+
+        ctx.moveTo(topLeft.x, topLeft.y);
+        ctx.lineTo(topRight.x, topRight.y);
+        ctx.lineTo(bottomRight.x, bottomRight.y);
+        ctx.lineTo(bottomLeft.x, bottomLeft.y);
+        ctx.closePath();
+        ctx.fill();
+    } else {
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+        const pos1 = worldToScreen(primeZone.minX, primeZone.minY);
+        const pos2 = worldToScreen(primeZone.maxX + 1, primeZone.maxY + 1);
+        const width = pos2.x - pos1.x;
+        const height = pos2.y - pos1.y;
+        ctx.fillRect(pos1.x, pos1.y, width, height);
     }
 }
 
-// 城を描画
-function drawCastles() {
-    castles.forEach(castle => {
-        const pos = worldToScreen(castle.x, castle.y);
-        ctx.fillStyle = '#ff0000';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(castle.name, pos.x, pos.y - 12);
-    });
+// セル描画（正方形 or ひし形）
+function drawCell(x, y, color) {
+    if (gridType === 'diamond') {
+        drawDiamondCell(x, y, color);
+    } else {
+        drawSquareCell(x, y, color);
+    }
+}
+
+// 正方形セル描画
+function drawSquareCell(x, y, color) {
+    const topLeft = worldToScreen(x, y);
+    const bottomRight = worldToScreen(x + 1, y + 1);
+    const width = bottomRight.x - topLeft.x;
+    const height = bottomRight.y - topLeft.y;
+
+    ctx.fillStyle = color;
+    ctx.fillRect(topLeft.x, topLeft.y, width, height);
+}
+
+// ひし形セル描画
+function drawDiamondCell(x, y, color) {
+    const topLeft = worldToScreen(x, y);
+    const topRight = worldToScreen(x, y + 1);
+    const bottomRight = worldToScreen(x + 1, y + 1);
+    const bottomLeft = worldToScreen(x + 1, y);
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(topLeft.x, topLeft.y);
+    ctx.lineTo(topRight.x, topRight.y);
+    ctx.lineTo(bottomRight.x, bottomRight.y);
+    ctx.lineTo(bottomLeft.x, bottomLeft.y);
+    ctx.closePath();
+    ctx.fill();
+}
+
+// 城の描画
+function drawCastle(castle) {
+    const { x, y, name } = castle;
+
+    // 城の9×9マス（濃い紫）
+    for (let dx = -4; dx <= 4; dx++) {
+        for (let dy = -4; dy <= 4; dy++) {
+            drawCell(x + dx, y + dy, 'rgba(128, 0, 128, 0.6)');
+        }
+    }
+
+    // 防衛帯（外側4マス、薄い紫）
+    for (let dx = -8; dx <= 8; dx++) {
+        for (let dy = -8; dy <= 8; dy++) {
+            if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+                drawCell(x + dx, y + dy, 'rgba(200, 150, 200, 0.3)');
+            }
+        }
+    }
+
+    // 城の名前を表示
+    const screenPos = worldToScreen(x, y);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 3;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, screenPos.x, screenPos.y);
+    ctx.restore();
+
+    // 城の中心マーカー
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.arc(screenPos.x, screenPos.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 }
 
 // 障害物を描画
@@ -583,7 +694,17 @@ function zoomOut() {
 function jumpToPrimeZone() {
     offsetX = (primeZone.minX + primeZone.maxX) / 2;
     offsetY = (primeZone.minY + primeZone.maxY) / 2;
-    scale = 5;
+
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+
+    // 一級地帯全体が表示されるようにスケールを計算
+    scale = Math.min(
+        width / (primeZone.maxY - primeZone.minY + 20),
+        height / (primeZone.maxX - primeZone.minX + 20)
+    );
+
     drawMap();
 }
 
