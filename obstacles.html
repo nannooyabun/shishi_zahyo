@@ -1070,12 +1070,7 @@
         // 障害物管理機能
         // ========================================
 
-        // 状態変数
-        let isPanning = false;
-        let lastPanPos = null;
-        let isDragging = false;
-        let dragStartCell = null;
-        let dragCurrentCell = null;
+        // 状態変数はcommon.jsで宣言済み（isPanning, lastPanPos, isDragging, dragStartCell, dragCurrentCell）
 
         // 障害物タイプを選択
         function selectObstacleType(type) {
