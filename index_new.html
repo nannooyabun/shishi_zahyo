@@ -33,11 +33,29 @@
             flex-direction: column;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             z-index: 1000;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar.collapsed .sidebar-header h1,
+        .sidebar.collapsed .sidebar-header p,
+        .sidebar.collapsed .nav-item span:not(.nav-item-icon),
+        .sidebar.collapsed .sidebar-help {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding: 15px 10px;
         }
 
         .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid rgba(255,255,255,0.2);
+            position: relative;
         }
 
         .sidebar-header h1 {
@@ -48,6 +66,33 @@
         .sidebar-header p {
             font-size: 12px;
             opacity: 0.9;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            top: 20px;
+            right: 10px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+
+        .sidebar-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .sidebar.collapsed .sidebar-toggle {
+            position: static;
+            margin: 0 auto;
         }
 
         .sidebar-nav {
@@ -130,8 +175,8 @@
         .content {
             flex: 1;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 2fr 1fr;
+            grid-template-columns: 7fr 3fr;
+            grid-template-rows: 1fr 1fr;
             gap: 20px;
             padding: 20px;
             overflow: auto;
@@ -559,6 +604,7 @@
         <div class="sidebar-header">
             <h1>🗺️ 座標管理</h1>
             <p>Shishi Zahyo System</p>
+            <button class="sidebar-toggle" onclick="toggleSidebar()">◀</button>
         </div>
 
         <div class="sidebar-nav">
@@ -741,6 +787,21 @@
 
     <!-- TOPページ固有のJavaScript -->
     <script>
+        // ========================================
+        // サイドバー折り畳み機能
+        // ========================================
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.querySelector('.sidebar-toggle');
+            sidebar.classList.toggle('collapsed');
+
+            if (sidebar.classList.contains('collapsed')) {
+                toggleBtn.textContent = '▶';
+            } else {
+                toggleBtn.textContent = '◀';
+            }
+        }
+
         // ========================================
         // ページ初期化
         // ========================================
