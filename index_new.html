@@ -946,16 +946,8 @@
         // ========================================
         // UI更新関数
         // ========================================
-
-        // グループ展開状態
-        let expandedGroupId = null;
-        let groupFilterActive = false;
-
-        // 座標フィルター状態
-        let filteredCoordinates = [];
-        let isFilterActive = false;
-        let selectedCoordinateIds = new Set();
-        let hiddenCoordinateIds = new Set();
+        // 注: expandedGroupId, groupFilterActive, filteredCoordinates, isFilterActive,
+        //     selectedCoordinateIds, hiddenCoordinateIds は common.js で宣言済み
 
         // グループフィルター適用
         function applyGroupFilters() {
