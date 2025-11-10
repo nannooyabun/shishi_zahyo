@@ -615,30 +615,75 @@ function drawObstacles() {
     });
 }
 
+// 居住範囲を描画
+function drawResidenceArea(coord) {
+    const { x, y } = coord;
+    const range = 10;
+
+    for (let dx = -range; dx <= range; dx++) {
+        for (let dy = -range; dy <= range; dy++) {
+            drawCell(x + dx, y + dy, 'rgba(100, 200, 100, 0.1)');
+        }
+    }
+}
+
+// 座標マーカーを描画
+function drawCoordinateMarker(coord, isDragging = false) {
+    const pos = worldToScreen(coord.x + 0.5, coord.y + 0.5);
+    const size = Math.min(scale * 0.8, 30);
+
+    // マーカー描画
+    ctx.fillStyle = isDragging ? '#ff9800' : '#ff4444';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, size / 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 名前表示（ズームレベルが十分な場合）
+    if (scale > 2) {
+        const fontSize = Math.min(scale * 2, 14);
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const name = coord.name.length > 10 ? coord.name.substring(0, 10) + '...' : coord.name;
+
+        // 名前の背景（白）
+        const metrics = ctx.measureText(name);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillRect(pos.x - metrics.width / 2 - 2, pos.y - fontSize / 2 - 2, metrics.width + 4, fontSize + 4);
+
+        // 名前のテキスト（黒）
+        ctx.fillStyle = '#000000';
+        ctx.fillText(name, pos.x, pos.y);
+    }
+}
+
 // 保存済み座標を描画
 function drawSavedCoordinates() {
     const coordsToDisplay = isFilterActive ? filteredCoordinates : savedCoordinates;
 
+    // 最初に全ての居住範囲を描画
+    coordsToDisplay.forEach(coord => {
+        if (hiddenCoordinateIds.has(coord.id)) return;
+        drawResidenceArea(coord);
+    });
+
+    // 次に全てのマーカーと名前を描画
     coordsToDisplay.forEach(coord => {
         if (hiddenCoordinateIds.has(coord.id)) return;
         if (draggedCoordinate && draggedCoordinate.id === coord.id) return;
-
-        const pos = worldToScreen(coord.x, coord.y);
-        const isSelected = selectedCoordinateIds.has(coord.id);
-        const isDuplicate = duplicateCoordinateIds.has(coord.id);
-
-        ctx.fillStyle = isDuplicate ? '#ff9800' : (isSelected ? '#4caf50' : '#2196f3');
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (scale > 3) {
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 10px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(coord.name, pos.x, pos.y - 10);
-        }
+        drawCoordinateMarker(coord);
     });
+
+    // ドラッグ中の座標
+    if (draggedCoordinate) {
+        drawCoordinateMarker(draggedCoordinate, true);
+    }
 }
 
 // 座標調整モードの座標を描画
