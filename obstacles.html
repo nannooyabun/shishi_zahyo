@@ -1266,6 +1266,53 @@
         }
 
         // ========================================
+        // Firebaseデータ読み込み
+        // ========================================
+        function loadDataFromFirebase() {
+            // 座標データのリアルタイム同期
+            coordinatesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                savedCoordinates = data ? Object.values(data) : [];
+                drawMap();
+            });
+
+            // グループデータのリアルタイム同期
+            groupsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                coordinateGroups = data ? Object.values(data) : [];
+                drawMap();
+            });
+
+            // 障害物データのリアルタイム同期
+            obstaclesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                obstacles = data ? Object.values(data) : [];
+                drawMap();
+            });
+        }
+
+        // ========================================
+        // イベントリスナー設定
+        // ========================================
+        function setupEventListeners() {
+            // ズームイベント
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const worldPos = screenToWorld(x, y);
+
+                if (e.deltaY < 0) {
+                    scale = Math.min(scale * 1.2, 50);
+                } else {
+                    scale = Math.max(scale / 1.2, 1);
+                }
+                drawMap();
+            }, { passive: false });
+        }
+
+        // ========================================
         // ページ初期化
         // ========================================
         document.addEventListener('DOMContentLoaded', () => {
