@@ -631,9 +631,10 @@
             /* サイドバーをオーバーレイ形式に */
             .sidebar {
                 position: fixed;
-                left: -250px;
+                left: -300px;
                 top: 0;
                 height: 100vh;
+                width: 300px;
                 z-index: 2000;
                 transition: left 0.3s ease;
             }
@@ -687,10 +688,19 @@
                 min-height: 300px;
             }
 
+            /* 保存済み座標エリアは特に大きくする */
+            .section:has(#coordinatesList) {
+                min-height: 600px;
+            }
+
             /* グループリストと座標リストのスクロール領域を確保 */
-            #groupsList,
-            #coordinatesList {
+            #groupsList {
                 max-height: 200px;
+                overflow-y: auto;
+            }
+
+            #coordinatesList {
+                max-height: 400px;
                 overflow-y: auto;
             }
 
@@ -714,9 +724,24 @@
                 min-height: 300px;
             }
 
+            /* 保存済み座標エリアは極小画面でもしっかり高さ確保 */
+            .section:has(#coordinatesList) {
+                min-height: 550px;
+            }
+
+            #coordinatesList {
+                max-height: 350px;
+            }
+
             .btn {
                 font-size: 13px;
                 padding: 8px 16px;
+            }
+
+            /* サイドバーの幅を画面の80%に */
+            .sidebar {
+                width: 80%;
+                left: -80%;
             }
         }
     </style>
