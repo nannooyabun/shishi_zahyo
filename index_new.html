@@ -631,10 +631,10 @@
             /* サイドバーをオーバーレイ形式に */
             .sidebar {
                 position: fixed;
-                left: -300px;
+                left: -250px;
                 top: 0;
                 height: 100vh;
-                width: 300px;
+                width: 250px;
                 z-index: 2000;
                 transition: left 0.3s ease;
             }
@@ -643,12 +643,21 @@
                 left: 0;
             }
 
-            /* サイドバー内のテキストを強制表示 */
+            /* サイドバー内のテキストを左揃えで強制表示 */
+            .sidebar .sidebar-header {
+                text-align: left !important;
+            }
+
             .sidebar .sidebar-header h1,
             .sidebar .sidebar-header p,
             .sidebar .nav-item span,
             .sidebar .sidebar-help {
                 display: block !important;
+                text-align: left !important;
+            }
+
+            .sidebar .nav-item {
+                text-align: left !important;
             }
 
             .sidebar .nav-item span {
@@ -723,7 +732,7 @@
 
             /* スマホ表示時はcollapsedクラスの影響を無効化 */
             .sidebar.collapsed {
-                width: 300px !important;
+                width: 250px !important;
             }
 
             .sidebar.collapsed .sidebar-header h1,
@@ -731,11 +740,13 @@
             .sidebar.collapsed .nav-item span:not(.nav-item-icon),
             .sidebar.collapsed .sidebar-help {
                 display: block !important;
+                text-align: left !important;
             }
 
             .sidebar.collapsed .nav-item {
                 justify-content: flex-start !important;
                 padding: 15px 20px !important;
+                text-align: left !important;
             }
 
             /* nav-itemのspan全体を強制表示 */
@@ -772,16 +783,16 @@
                 padding: 8px 16px;
             }
 
-            /* サイドバーの幅を画面の80%に */
+            /* サイドバーの幅を画面の70%に */
             .sidebar {
-                width: 80%;
-                left: -80%;
+                width: 70%;
+                left: -70%;
             }
 
             /* 極小画面でもcollapsedクラスの影響を無効化 */
             .sidebar.collapsed {
-                width: 80% !important;
-                left: -80% !important;
+                width: 70% !important;
+                left: -70% !important;
             }
 
             .sidebar.collapsed .sidebar-header h1,
@@ -789,11 +800,13 @@
             .sidebar.collapsed .nav-item span:not(.nav-item-icon),
             .sidebar.collapsed .sidebar-help {
                 display: block !important;
+                text-align: left !important;
             }
 
             .sidebar.collapsed .nav-item {
                 justify-content: flex-start !important;
                 padding: 15px 20px !important;
+                text-align: left !important;
             }
 
             /* nav-itemのspan全体を強制表示 */
