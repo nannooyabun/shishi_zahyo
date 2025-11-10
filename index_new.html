@@ -643,6 +643,18 @@
                 left: 0;
             }
 
+            /* サイドバー内のテキストを強制表示 */
+            .sidebar .sidebar-header h1,
+            .sidebar .sidebar-header p,
+            .sidebar .nav-item span,
+            .sidebar .sidebar-help {
+                display: block !important;
+            }
+
+            .sidebar .nav-item span {
+                display: inline !important;
+            }
+
             /* オーバーレイ背景 */
             .sidebar-overlay {
                 display: none;
@@ -711,19 +723,24 @@
 
             /* スマホ表示時はcollapsedクラスの影響を無効化 */
             .sidebar.collapsed {
-                width: 300px;
+                width: 300px !important;
             }
 
             .sidebar.collapsed .sidebar-header h1,
             .sidebar.collapsed .sidebar-header p,
             .sidebar.collapsed .nav-item span:not(.nav-item-icon),
             .sidebar.collapsed .sidebar-help {
-                display: block;
+                display: block !important;
             }
 
             .sidebar.collapsed .nav-item {
-                justify-content: flex-start;
-                padding: 15px 20px;
+                justify-content: flex-start !important;
+                padding: 15px 20px !important;
+            }
+
+            /* nav-itemのspan全体を強制表示 */
+            .sidebar .nav-item span {
+                display: inline !important;
             }
         }
 
@@ -763,20 +780,25 @@
 
             /* 極小画面でもcollapsedクラスの影響を無効化 */
             .sidebar.collapsed {
-                width: 80%;
-                left: -80%;
+                width: 80% !important;
+                left: -80% !important;
             }
 
             .sidebar.collapsed .sidebar-header h1,
             .sidebar.collapsed .sidebar-header p,
             .sidebar.collapsed .nav-item span:not(.nav-item-icon),
             .sidebar.collapsed .sidebar-help {
-                display: block;
+                display: block !important;
             }
 
             .sidebar.collapsed .nav-item {
-                justify-content: flex-start;
-                padding: 15px 20px;
+                justify-content: flex-start !important;
+                padding: 15px 20px !important;
+            }
+
+            /* nav-itemのspan全体を強制表示 */
+            .sidebar .nav-item span {
+                display: inline !important;
             }
         }
     </style>
