@@ -658,6 +658,8 @@
 
             .sidebar .nav-item {
                 text-align: left !important;
+                justify-content: flex-start !important;
+                align-items: center !important;
             }
 
             .sidebar .nav-item span {
@@ -787,6 +789,12 @@
             .sidebar {
                 width: 70%;
                 left: -70%;
+            }
+
+            /* 極小画面でも左揃えを強制 */
+            .sidebar .nav-item {
+                justify-content: flex-start !important;
+                align-items: center !important;
             }
 
             /* 極小画面でもcollapsedクラスの影響を無効化 */
