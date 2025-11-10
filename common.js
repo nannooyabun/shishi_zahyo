@@ -140,6 +140,28 @@ function initCanvas(canvasId) {
     return true;
 }
 
+// Canvas初期化（共通関数）
+function initCommon(canvasId) {
+    console.log('共通機能を初期化中...');
+
+    // Canvas初期化
+    if (!initCanvas(canvasId)) {
+        return false;
+    }
+
+    // Canvasリサイズ
+    resizeCanvas();
+
+    // ウィンドウリサイズイベント
+    window.addEventListener('resize', resizeCanvas);
+
+    // 初期マップ描画
+    drawMap();
+
+    console.log('共通機能の初期化完了');
+    return true;
+}
+
 // ========================================
 // ユーティリティ関数
 // ========================================
