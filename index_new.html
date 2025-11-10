@@ -708,6 +708,23 @@
             .sidebar-toggle {
                 display: none;
             }
+
+            /* スマホ表示時はcollapsedクラスの影響を無効化 */
+            .sidebar.collapsed {
+                width: 300px;
+            }
+
+            .sidebar.collapsed .sidebar-header h1,
+            .sidebar.collapsed .sidebar-header p,
+            .sidebar.collapsed .nav-item span:not(.nav-item-icon),
+            .sidebar.collapsed .sidebar-help {
+                display: block;
+            }
+
+            .sidebar.collapsed .nav-item {
+                justify-content: flex-start;
+                padding: 15px 20px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -742,6 +759,24 @@
             .sidebar {
                 width: 80%;
                 left: -80%;
+            }
+
+            /* 極小画面でもcollapsedクラスの影響を無効化 */
+            .sidebar.collapsed {
+                width: 80%;
+                left: -80%;
+            }
+
+            .sidebar.collapsed .sidebar-header h1,
+            .sidebar.collapsed .sidebar-header p,
+            .sidebar.collapsed .nav-item span:not(.nav-item-icon),
+            .sidebar.collapsed .sidebar-help {
+                display: block;
+            }
+
+            .sidebar.collapsed .nav-item {
+                justify-content: flex-start;
+                padding: 15px 20px;
             }
         }
     </style>
