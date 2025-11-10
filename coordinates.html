@@ -957,6 +957,13 @@
             <div class="section">
                 <h2>📁 グループ管理</h2>
 
+                <!-- 座標調整モードボタン -->
+                <div class="map-controls" style="margin-bottom: 12px;">
+                    <button onclick="toggleAdjustMode()" id="adjustModeBtn" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); width: 100%;">
+                        🔧 座標調整モード切替
+                    </button>
+                </div>
+
                 <!-- グループ検索・ソート -->
                 <div class="filter-controls" style="margin-bottom: 8px;">
                     <input type="text" id="groupNameFilter" placeholder="グループ名で検索" onkeyup="applyGroupFilters()" style="width: 100%;">
@@ -1040,6 +1047,105 @@
     <!-- 座標管理ページ固有のJavaScript -->
     <script>
         // ========================================
+        // 座標調整機能
+        // ========================================
+
+        // 状態変数
+        let isPanning = false;
+        let lastPanPos = null;
+        let draggedCoordinate = null;
+
+        // 座標調整モードを切り替え
+        function toggleAdjustMode() {
+            const btn = document.getElementById('adjustModeBtn');
+            if (currentMode === 'adjust') {
+                currentMode = 'view';
+                btn.style.background = 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)';
+                btn.textContent = '🔧 座標調整モード切替';
+                console.log('閲覧モードに切り替え');
+            } else {
+                currentMode = 'adjust';
+                btn.style.background = 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)';
+                btn.textContent = '✅ 座標調整モード（ON）';
+                console.log('座標調整モードに切り替え');
+            }
+        }
+
+        // マウスダウン
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const worldPos = screenToWorld(x, y);
+
+            if (currentMode === 'view') {
+                // ビューモード：パン操作
+                isPanning = true;
+                lastPanPos = { x: e.clientX, y: e.clientY };
+                canvas.style.cursor = 'grabbing';
+            } else if (currentMode === 'adjust') {
+                // 調整モード：座標をクリックしてドラッグ開始
+                const clickedCoord = findCoordinateAtPosition(worldPos);
+                if (clickedCoord) {
+                    draggedCoordinate = { ...clickedCoord };
+                    canvas.style.cursor = 'move';
+                }
+            }
+        }
+
+        // マウスムーブ
+        function handleMouseMove(e) {
+            if (isPanning && lastPanPos) {
+                const dx = e.clientX - lastPanPos.x;
+                const dy = e.clientY - lastPanPos.y;
+                offsetX -= dy / scale;
+                offsetY -= dx / scale;
+                lastPanPos = { x: e.clientX, y: e.clientY };
+                drawMap();
+            } else if (currentMode === 'adjust' && draggedCoordinate) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const worldPos = screenToWorld(x, y);
+                draggedCoordinate.x = worldPos.x;
+                draggedCoordinate.y = worldPos.y;
+                drawMap();
+            }
+        }
+
+        // マウスアップ
+        function handleMouseUp(e) {
+            if (isPanning) {
+                isPanning = false;
+                lastPanPos = null;
+                canvas.style.cursor = 'default';
+            } else if (draggedCoordinate) {
+                // 座標の位置を更新
+                coordinatesRef.child(draggedCoordinate.id).update({
+                    x: draggedCoordinate.x,
+                    y: draggedCoordinate.y
+                });
+                draggedCoordinate = null;
+                canvas.style.cursor = 'default';
+                console.log('座標を移動しました');
+            }
+        }
+
+        // 指定位置にある座標を検索
+        function findCoordinateAtPosition(worldPos) {
+            const coordsToCheck = isFilterActive ? filteredCoordinates : savedCoordinates;
+            for (const coord of coordsToCheck) {
+                if (hiddenCoordinateIds.has(coord.id)) continue;
+                const dx = Math.abs(coord.x - worldPos.x);
+                const dy = Math.abs(coord.y - worldPos.y);
+                if (dx <= 1 && dy <= 1) {
+                    return coord;
+                }
+            }
+            return null;
+        }
+
+        // ========================================
         // サイドバー折り畳み機能
         // ========================================
         function toggleSidebar() {
@@ -1068,13 +1174,19 @@
         // ページ初期化
         // ========================================
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('TOPページを初期化中...');
+            console.log('座標管理ページを初期化中...');
 
             // Canvas初期化
             if (!initCommon('mapCanvas')) {
                 alert('Canvasの初期化に失敗しました');
                 return;
             }
+
+            // マウスイベントリスナー登録
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
 
             // Firebaseからデータを読み込み
             loadDataFromFirebase();
