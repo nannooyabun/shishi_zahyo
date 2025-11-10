@@ -570,6 +570,10 @@ function drawCastle(castle) {
 // 障害物を描画
 function drawObstacles() {
     obstacles.forEach(obstacle => {
+        // cells プロパティが存在しない場合はスキップ
+        if (!obstacle.cells || !Array.isArray(obstacle.cells)) {
+            return;
+        }
         obstacle.cells.forEach(cellKey => {
             const [x, y] = cellKey.split(',').map(Number);
             const pos = worldToScreen(x, y);
@@ -617,6 +621,10 @@ function drawObstacles() {
 
 // 居住範囲を描画
 function drawResidenceArea(coord) {
+    // x, y が存在しない場合はスキップ
+    if (coord.x === undefined || coord.y === undefined) {
+        return;
+    }
     const { x, y } = coord;
     const range = 10;
 
@@ -629,6 +637,10 @@ function drawResidenceArea(coord) {
 
 // 座標マーカーを描画
 function drawCoordinateMarker(coord, isDragging = false) {
+    // x, y が存在しない場合はスキップ
+    if (coord.x === undefined || coord.y === undefined) {
+        return;
+    }
     const pos = worldToScreen(coord.x + 0.5, coord.y + 0.5);
     const size = Math.min(scale * 0.8, 30);
 
@@ -643,7 +655,7 @@ function drawCoordinateMarker(coord, isDragging = false) {
     ctx.stroke();
 
     // 名前表示（ズームレベルが十分な場合）
-    if (scale > 2) {
+    if (scale > 2 && coord.name) {
         const fontSize = Math.min(scale * 2, 14);
         ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.fillStyle = 'white';
