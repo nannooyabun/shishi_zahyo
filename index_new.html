@@ -596,9 +596,138 @@
             flex: 1;
             min-width: 120px;
         }
+
+        /* ハンバーガーメニューボタン（デフォルトは非表示） */
+        .hamburger-menu {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .hamburger-menu:active {
+            background: #5568d3;
+        }
+
+        /* スマホ用のレスポンシブデザイン */
+        @media (max-width: 768px) {
+            /* ハンバーガーメニューボタンを表示 */
+            .hamburger-menu {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* サイドバーをオーバーレイ形式に */
+            .sidebar {
+                position: fixed;
+                left: -250px;
+                top: 0;
+                height: 100vh;
+                z-index: 2000;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+
+            /* オーバーレイ背景 */
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 1999;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+
+            /* メインコンテンツを全幅に */
+            .main-container {
+                width: 100%;
+            }
+
+            /* ヘッダーのパディング調整（ハンバーガーメニューの分） */
+            .header {
+                padding: 20px 20px 20px 80px;
+            }
+
+            /* レイアウトを縦並びに変更 */
+            .content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            /* マップセクションを1行のみに */
+            .map-section {
+                grid-row: 1;
+                min-height: 400px;
+            }
+
+            /* その他のセクションの高さを調整 */
+            .section {
+                min-height: 300px;
+            }
+
+            /* グループリストと座標リストのスクロール領域を確保 */
+            #groupsList,
+            #coordinatesList {
+                max-height: 200px;
+                overflow-y: auto;
+            }
+
+            /* サイドバーの折り畳みボタンを非表示（オーバーレイ形式では不要） */
+            .sidebar-toggle {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            /* 極小画面用の調整 */
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .section h2 {
+                font-size: 16px;
+            }
+
+            .map-section {
+                min-height: 300px;
+            }
+
+            .btn {
+                font-size: 13px;
+                padding: 8px 16px;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- ハンバーガーメニューボタン（スマホ用） -->
+    <button class="hamburger-menu" onclick="toggleMobileSidebar()">☰</button>
+
+    <!-- オーバーレイ背景（スマホ用） -->
+    <div class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
     <!-- サイドメニューバー -->
     <div class="sidebar">
         <div class="sidebar-header">
@@ -800,6 +929,16 @@
             } else {
                 toggleBtn.textContent = '◀';
             }
+        }
+
+        // ========================================
+        // スマホ用サイドバー開閉機能
+        // ========================================
+        function toggleMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
         }
 
         // ========================================
