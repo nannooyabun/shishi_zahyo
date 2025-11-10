@@ -217,12 +217,32 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-height: 400px;
         }
 
         .section h2 {
             margin-bottom: 15px;
             color: #333;
             font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        /* スクロールエリア */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 200px;
+        }
+
+        /* フィルターコントロール */
+        .filter-controls {
+            flex-shrink: 0;
+            margin-bottom: 8px;
+        }
+
+        /* ボタンコントロール */
+        .map-controls {
+            flex-shrink: 0;
         }
 
         /* グリッド表示切替 */
