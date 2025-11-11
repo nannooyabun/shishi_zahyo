@@ -1072,6 +1072,31 @@
 
         // 状態変数はcommon.jsで宣言済み（isPanning, lastPanPos, isDragging, dragStartCell, dragCurrentCell）
 
+        // スクリーン座標からマス目の座標（左上の角）を取得
+        function screenToCellCoord(screenX, screenY) {
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+
+            if (gridType === 'diamond') {
+                const sx = (screenX - width / 2) / scale * 2;
+                const sy = (screenY - height / 2) / scale / 0.876 * 2;
+
+                const worldX = offsetX + (sx + sy) / 2;
+                const worldY = offsetY + (sx - sy) / 2;
+
+                return {
+                    x: Math.floor(worldX),
+                    y: Math.floor(worldY)
+                };
+            } else {
+                return {
+                    x: Math.floor(offsetX + (screenY - height / 2) / scale),
+                    y: Math.floor(offsetY + (screenX - width / 2) / scale)
+                };
+            }
+        }
+
         // 障害物タイプを選択
         function selectObstacleType(type) {
             selectedObstacleType = type;
@@ -1089,7 +1114,6 @@
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            const worldPos = screenToWorld(x, y);
 
             if (currentMode === 'view') {
                 // ビューモード：パン操作
@@ -1097,11 +1121,12 @@
                 lastPanPos = { x: e.clientX, y: e.clientY };
                 canvas.style.cursor = 'grabbing';
             } else if (currentMode === 'input' && selectedObstacleType) {
-                // 入力モード：ドラッグ選択開始
+                // 入力モード：ドラッグ選択開始（マス目の座標を取得）
+                const cellPos = screenToCellCoord(x, y);
                 isDragging = true;
-                dragStartCell = worldPos;
-                dragCurrentCell = worldPos;
-                const key = `${worldPos.x},${worldPos.y}`;
+                dragStartCell = cellPos;
+                dragCurrentCell = cellPos;
+                const key = `${cellPos.x},${cellPos.y}`;
                 const existingObstacle = obstacles.find(o => o.cells && o.cells.includes(key));
                 dragStartCell.isObstacle = !!existingObstacle;
             }
@@ -1120,8 +1145,8 @@
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-                const worldPos = screenToWorld(x, y);
-                dragCurrentCell = worldPos;
+                const cellPos = screenToCellCoord(x, y);
+                dragCurrentCell = cellPos;
                 updateDragSelection();
                 drawMap();
             }
