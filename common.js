@@ -598,8 +598,6 @@ function drawObstacles() {
         }
         obstacle.cells.forEach(cellKey => {
             const [x, y] = cellKey.split(',').map(Number);
-            const pos = worldToScreen(x, y);
-            const size = scale * 0.8;
 
             if (obstacle.type === 'rock') {
                 ctx.fillStyle = selectedObstacleIds.has(obstacle.id) ? '#8B4513' : '#A0522D';
@@ -607,37 +605,40 @@ function drawObstacles() {
                 ctx.fillStyle = obstacle.color || '#666';
             }
 
-            if (gridType === 'diamond') {
-                ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y - size / 2);
-                ctx.lineTo(pos.x + size / 2, pos.y);
-                ctx.lineTo(pos.x, pos.y + size / 2);
-                ctx.lineTo(pos.x - size / 2, pos.y);
-                ctx.closePath();
-                ctx.fill();
-            } else {
-                ctx.fillRect(pos.x - size / 2, pos.y - size / 2, size, size);
-            }
+            // グリッドのマス目全体を塗りつぶす（4つの角の点を使用）
+            const topLeft = worldToScreen(x, y);
+            const topRight = worldToScreen(x, y + 1);
+            const bottomRight = worldToScreen(x + 1, y + 1);
+            const bottomLeft = worldToScreen(x + 1, y);
+
+            ctx.beginPath();
+            ctx.moveTo(topLeft.x, topLeft.y);
+            ctx.lineTo(topRight.x, topRight.y);
+            ctx.lineTo(bottomRight.x, bottomRight.y);
+            ctx.lineTo(bottomLeft.x, bottomLeft.y);
+            ctx.closePath();
+            ctx.fill();
         });
     });
 
     // 選択中の一時セル
     tempSelection.forEach(cellKey => {
         const [x, y] = cellKey.split(',').map(Number);
-        const pos = worldToScreen(x, y);
-        const size = scale * 0.8;
         ctx.fillStyle = 'rgba(135, 69, 19, 0.5)';
-        if (gridType === 'diamond') {
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y - size / 2);
-            ctx.lineTo(pos.x + size / 2, pos.y);
-            ctx.lineTo(pos.x, pos.y + size / 2);
-            ctx.lineTo(pos.x - size / 2, pos.y);
-            ctx.closePath();
-            ctx.fill();
-        } else {
-            ctx.fillRect(pos.x - size / 2, pos.y - size / 2, size, size);
-        }
+
+        // グリッドのマス目全体を塗りつぶす（4つの角の点を使用）
+        const topLeft = worldToScreen(x, y);
+        const topRight = worldToScreen(x, y + 1);
+        const bottomRight = worldToScreen(x + 1, y + 1);
+        const bottomLeft = worldToScreen(x + 1, y);
+
+        ctx.beginPath();
+        ctx.moveTo(topLeft.x, topLeft.y);
+        ctx.lineTo(topRight.x, topRight.y);
+        ctx.lineTo(bottomRight.x, bottomRight.y);
+        ctx.lineTo(bottomLeft.x, bottomLeft.y);
+        ctx.closePath();
+        ctx.fill();
     });
 }
 
