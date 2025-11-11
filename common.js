@@ -611,6 +611,16 @@ function drawObstacles() {
             const bottomRight = worldToScreen(x + 1, y + 1);
             const bottomLeft = worldToScreen(x + 1, y);
 
+            // デバッグ出力（最初のセルのみ）
+            if (obstacle.cells.indexOf(cellKey) === 0) {
+                console.log('確定障害物描画 - cell:', x, y, 'corners:', {
+                    topLeft: `(${topLeft.x.toFixed(1)}, ${topLeft.y.toFixed(1)})`,
+                    topRight: `(${topRight.x.toFixed(1)}, ${topRight.y.toFixed(1)})`,
+                    bottomRight: `(${bottomRight.x.toFixed(1)}, ${bottomRight.y.toFixed(1)})`,
+                    bottomLeft: `(${bottomLeft.x.toFixed(1)}, ${bottomLeft.y.toFixed(1)})`
+                });
+            }
+
             ctx.beginPath();
             ctx.moveTo(topLeft.x, topLeft.y);
             ctx.lineTo(topRight.x, topRight.y);
