@@ -355,9 +355,6 @@ function drawMap() {
     // 座標調整モード
     drawAdjustModeCoordinates();
 
-    // ドラッグ選択
-    drawDragSelection();
-
     // 範囲選択
     drawRangeSelection();
 
@@ -756,35 +753,6 @@ function drawAdjustModeCoordinates() {
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
         ctx.fill();
-    }
-}
-
-// ドラッグ選択範囲を描画
-function drawDragSelection() {
-    if (!isDragging || !dragStartCell || !dragCurrentCell) return;
-
-    const minX = Math.min(dragStartCell.x, dragCurrentCell.x);
-    const maxX = Math.max(dragStartCell.x, dragCurrentCell.x);
-    const minY = Math.min(dragStartCell.y, dragCurrentCell.y);
-    const maxY = Math.max(dragStartCell.y, dragCurrentCell.y);
-
-    for (let x = minX; x <= maxX; x++) {
-        for (let y = minY; y <= maxY; y++) {
-            const pos = worldToScreen(x, y);
-            const size = scale * 0.9;
-            ctx.fillStyle = 'rgba(33, 150, 243, 0.3)';
-            if (gridType === 'diamond') {
-                ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y - size / 2);
-                ctx.lineTo(pos.x + size / 2, pos.y);
-                ctx.lineTo(pos.x, pos.y + size / 2);
-                ctx.lineTo(pos.x - size / 2, pos.y);
-                ctx.closePath();
-                ctx.fill();
-            } else {
-                ctx.fillRect(pos.x - size / 2, pos.y - size / 2, size, size);
-            }
-        }
     }
 }
 
