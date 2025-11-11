@@ -599,7 +599,12 @@ function drawObstacles() {
         obstacle.cells.forEach(cellKey => {
             const [x, y] = cellKey.split(',').map(Number);
 
-            if (obstacle.type === 'rock') {
+            // 色を決定
+            if (tempSelection.has(cellKey)) {
+                // 描画中（tempSelection内）：明るい茶色
+                ctx.fillStyle = '#D2691E';
+            } else if (obstacle.type === 'rock') {
+                // 確定後：濃い茶色（選択時はさらに濃い色）
                 ctx.fillStyle = selectedObstacleIds.has(obstacle.id) ? '#8B4513' : '#A0522D';
             } else if (obstacle.type === 'custom') {
                 ctx.fillStyle = obstacle.color || '#666';
@@ -611,16 +616,6 @@ function drawObstacles() {
             const bottomRight = worldToScreen(x + 1, y + 1);
             const bottomLeft = worldToScreen(x + 1, y);
 
-            // デバッグ出力（最初のセルのみ）
-            if (obstacle.cells.indexOf(cellKey) === 0) {
-                console.log('確定障害物描画 - cell:', x, y, 'corners:', {
-                    topLeft: `(${topLeft.x.toFixed(1)}, ${topLeft.y.toFixed(1)})`,
-                    topRight: `(${topRight.x.toFixed(1)}, ${topRight.y.toFixed(1)})`,
-                    bottomRight: `(${bottomRight.x.toFixed(1)}, ${bottomRight.y.toFixed(1)})`,
-                    bottomLeft: `(${bottomLeft.x.toFixed(1)}, ${bottomLeft.y.toFixed(1)})`
-                });
-            }
-
             ctx.beginPath();
             ctx.moveTo(topLeft.x, topLeft.y);
             ctx.lineTo(topRight.x, topRight.y);
@@ -631,24 +626,22 @@ function drawObstacles() {
         });
     });
 
-    // 選択中の一時セル
+    // tempSelection内の新規セル（まだ障害物として登録されていないセル）を描画
     tempSelection.forEach(cellKey => {
+        // 既に障害物として描画済みのセルはスキップ
+        const alreadyDrawn = obstacles.some(obstacle =>
+            obstacle.cells && obstacle.cells.includes(cellKey)
+        );
+        if (alreadyDrawn) return;
+
         const [x, y] = cellKey.split(',').map(Number);
-        ctx.fillStyle = 'rgba(135, 69, 19, 0.5)';
+        ctx.fillStyle = '#D2691E'; // 明るい茶色（描画中）
 
         // グリッドのマス目全体を塗りつぶす（4つの角の点を使用）
         const topLeft = worldToScreen(x, y);
         const topRight = worldToScreen(x, y + 1);
         const bottomRight = worldToScreen(x + 1, y + 1);
         const bottomLeft = worldToScreen(x + 1, y);
-
-        // デバッグ出力
-        console.log('ハイライト描画 - cell:', x, y, 'corners:', {
-            topLeft: `(${topLeft.x.toFixed(1)}, ${topLeft.y.toFixed(1)})`,
-            topRight: `(${topRight.x.toFixed(1)}, ${topRight.y.toFixed(1)})`,
-            bottomRight: `(${bottomRight.x.toFixed(1)}, ${bottomRight.y.toFixed(1)})`,
-            bottomLeft: `(${bottomLeft.x.toFixed(1)}, ${bottomLeft.y.toFixed(1)})`
-        });
 
         ctx.beginPath();
         ctx.moveTo(topLeft.x, topLeft.y);
