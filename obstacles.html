@@ -1123,6 +1123,7 @@
             } else if (currentMode === 'input' && selectedObstacleType) {
                 // 入力モード：ドラッグ選択開始（マス目の座標を取得）
                 const cellPos = screenToCellCoord(x, y);
+                console.log('クリック位置 - screen:', x, y, 'cell:', cellPos.x, cellPos.y);
                 isDragging = true;
                 dragStartCell = cellPos;
                 dragCurrentCell = cellPos;
