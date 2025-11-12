@@ -964,6 +964,19 @@
                     </button>
                 </div>
 
+                <!-- 座標入力パネル -->
+                <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #333;">📝 座標を入力</h3>
+                    <div style="margin-bottom: 8px;">
+                        <input type="text" id="coordInput" placeholder="例: @100 200" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">形式: @X Y（スペース区切り）</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="jumpToInputCoord()" style="flex: 1; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold;">🚀 ジャンプ</button>
+                        <button onclick="addCoordFromInput()" style="flex: 1; background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold;">➕ 追加</button>
+                    </div>
+                </div>
+
                 <!-- グループ検索・ソート -->
                 <div class="filter-controls" style="margin-bottom: 8px;">
                     <input type="text" id="groupNameFilter" placeholder="グループ名で検索" onkeyup="applyGroupFilters()" style="width: 100%;">
@@ -1140,6 +1153,45 @@
                 }
             }
             return null;
+        }
+
+        // 入力された座標にジャンプ
+        function jumpToInputCoord() {
+            const input = document.getElementById('coordInput');
+            const coord = parseCoordinate(input.value);
+            if (!coord) {
+                alert('座標形式が正しくありません。\n例: @100 200 または 100 200');
+                return;
+            }
+            offsetX = coord.x;
+            offsetY = coord.y;
+            drawMap();
+            console.log(`座標 ${formatCoordinate(coord.x, coord.y)} にジャンプしました`);
+        }
+
+        // 入力から座標を追加
+        function addCoordFromInput() {
+            const input = document.getElementById('coordInput');
+            const coord = parseCoordinate(input.value);
+            if (!coord) {
+                alert('座標形式が正しくありません。\n例: @100 200 または 100 200');
+                return;
+            }
+
+            const name = prompt('座標の名前を入力してください:', `座標 ${formatCoordinate(coord.x, coord.y)}`);
+            if (!name) return;
+
+            const newCoord = {
+                id: Date.now().toString(),
+                x: coord.x,
+                y: coord.y,
+                name: name,
+                createdAt: new Date().toISOString()
+            };
+
+            coordinatesRef.child(newCoord.id).set(newCoord);
+            input.value = '';
+            console.log(`座標 ${formatCoordinate(coord.x, coord.y)} を追加しました`);
         }
 
         // ========================================
@@ -1510,6 +1562,7 @@
 
             updateGroupsList();
             updateCoordinatesList();
+            drawMap(); // マップを再描画して座標表示を更新
         }
 
         // 座標フィルター適用

@@ -598,10 +598,12 @@ function drawObstacles() {
         obstacle.cells.forEach(cellKey => {
             const [x, y] = cellKey.split(',').map(Number);
 
-            // 色を決定
+            // 色を決定（デフォルトは灰色）
+            ctx.fillStyle = '#999';
+
             if (tempSelection.has(cellKey)) {
                 // 描画中（tempSelection内）
-                if (selectedObstacleType === 'custom' && customObstacleSettings.color) {
+                if (selectedObstacleType === 'custom' && customObstacleSettings && customObstacleSettings.color) {
                     // カスタム障害物描画中：設定された色を使用（少し明るく）
                     const color = customObstacleSettings.color;
                     const rgb = parseInt(color.slice(1), 16);
@@ -732,7 +734,21 @@ function drawCoordinateMarker(coord, isDragging = false) {
 
 // 保存済み座標を描画
 function drawSavedCoordinates() {
-    const coordsToDisplay = isFilterActive ? filteredCoordinates : savedCoordinates;
+    let coordsToDisplay;
+
+    // グループフィルタが有効な場合
+    if (groupFilterActive && expandedGroupId) {
+        const group = coordinateGroups.find(g => g.id === expandedGroupId);
+        if (group && group.coordinateIds) {
+            coordsToDisplay = savedCoordinates.filter(c => group.coordinateIds.includes(c.id));
+        } else {
+            coordsToDisplay = [];
+        }
+    } else if (isFilterActive) {
+        coordsToDisplay = filteredCoordinates;
+    } else {
+        coordsToDisplay = savedCoordinates;
+    }
 
     // 最初に全ての居住範囲を描画
     coordsToDisplay.forEach(coord => {
@@ -778,6 +794,20 @@ function drawAdjustModeCoordinates() {
         ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
         ctx.fill();
     }
+}
+
+// 座標を@記号付きスペース区切り形式でフォーマット
+function formatCoordinate(x, y) {
+    return `@${Math.round(x)} ${Math.round(y)}`;
+}
+
+// @記号付きスペース区切り形式から座標をパース
+function parseCoordinate(str) {
+    const match = str.trim().match(/@?\s*(-?\d+)\s+(-?\d+)/);
+    if (match) {
+        return { x: parseInt(match[1]), y: parseInt(match[2]) };
+    }
+    return null;
 }
 
 // 範囲選択を描画
