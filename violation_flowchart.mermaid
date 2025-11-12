@@ -1,0 +1,40 @@
+flowchart TD
+    A[①違反に気づく] --> B[②族チャ or 全チャで<br/>座標付き報告<br/><small>※他の人経由でもOK</small>]
+    
+    B --> C{③全チャ報告済み?}
+    
+    C -->|はい| D1[指示前でも<br/>部隊を抜いてOK]
+    C -->|いいえ| D2[指示を待つ]
+    
+    D1 --> E[④違反鉱山から<br/>部隊を抜く]
+    D2 --> E
+    
+    E --> F{⑤当日中に<br/>掘り切れる?}
+    
+    F -->|はい| G1[違反していない<br/>部隊に入替えて<br/>掘り切る]
+    F -->|いいえ| G2[全チャなどで呼びかけて<br/>他の人に掘ってもらう]
+    
+    G1 --> H[⑥全ての違反していない<br/>高等鉱山を掘り終える]
+    G2 --> H
+    
+    H --> I[⑦ペナルティ開始<br/>0時～]
+    
+    I --> J{掘り終わりが<br/>日付をまたぐ?}
+    
+    J -->|はい| K[全チャなどで声をかけて<br/>他の人に掘ってもらえれば<br/>抜けてOK]
+    J -->|いいえ| L[完了]
+    K --> L
+    
+    style A fill:#ffcccc
+    style B fill:#fff4cc
+    style C fill:#cce5ff
+    style E fill:#ffddcc
+    style F fill:#cce5ff
+    style H fill:#d4edda
+    style I fill:#f8d7da
+    style L fill:#d4edda
+    
+    classDef noteStyle fill:#f0f0f0,stroke:#666,stroke-width:2px,stroke-dasharray: 5 5
+    
+    note1[注意:<br/>報告なしで抜くのはNG<br/>途中抜けと区別がつかないため]:::noteStyle
+    C -.-> note1
