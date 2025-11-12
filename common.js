@@ -321,47 +321,56 @@ function resizeCanvas() {
 
 // メイン描画関数
 function drawMap() {
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    const width = canvas.width / dpr;
-    const height = canvas.height / dpr;
-
-    ctx.clearRect(0, 0, width, height);
-
-    // 背景
-    ctx.fillStyle = '#f5f5f5';
-    ctx.fillRect(0, 0, width, height);
-
-    // 一級地帯の背景
-    drawPrimeZoneBackground();
-
-    // グリッド描画
-    if (gridType === 'diamond') {
-        drawDiamondGrid();
-    } else {
-        drawSquareGrid();
+    if (!ctx) {
+        console.error('Canvas context not initialized');
+        return;
     }
 
-    // 城の描画
-    castles.forEach(castle => {
-        drawCastle(castle);
-    });
+    try {
+        const dpr = window.devicePixelRatio || 1;
+        const width = canvas.width / dpr;
+        const height = canvas.height / dpr;
 
-    // 障害物描画
-    drawObstacles();
+        ctx.clearRect(0, 0, width, height);
 
-    // 保存済み座標描画
-    drawSavedCoordinates();
+        // 背景
+        ctx.fillStyle = '#f5f5f5';
+        ctx.fillRect(0, 0, width, height);
 
-    // 座標調整モード
-    drawAdjustModeCoordinates();
+        // 一級地帯の背景
+        drawPrimeZoneBackground();
 
-    // 範囲選択
-    drawRangeSelection();
+        // グリッド描画
+        if (gridType === 'diamond') {
+            drawDiamondGrid();
+        } else {
+            drawSquareGrid();
+        }
 
-    // 中央座標表示更新
-    updateCenterCoordDisplay();
+        // 城の描画
+        castles.forEach(castle => {
+            drawCastle(castle);
+        });
+
+        // 障害物描画
+        drawObstacles();
+
+        // 保存済み座標描画
+        drawSavedCoordinates();
+
+        // 座標調整モード
+        drawAdjustModeCoordinates();
+
+        // 範囲選択
+        drawRangeSelection();
+
+        // 中央座標表示更新
+        if (typeof updateCenterCoordDisplay === 'function') {
+            updateCenterCoordDisplay();
+        }
+    } catch (error) {
+        console.error('Error in drawMap:', error);
+    }
 }
 
 // 正方形グリッド描画
