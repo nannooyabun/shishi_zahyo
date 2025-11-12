@@ -390,6 +390,47 @@
             color: #333;
         }
 
+        /* フローティング障害物選択ボタン */
+        .floating-obstacle-buttons {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 1000;
+        }
+
+        .floating-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .floating-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .floating-btn:active {
+            transform: scale(0.95);
+        }
+
+        .floating-btn.active {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+            box-shadow: 0 6px 12px rgba(255, 183, 0, 0.4);
+        }
+
         /* 全画面表示モード */
         .fullscreen-container {
             width: 100vw !important;
@@ -931,6 +972,13 @@
                 <!-- 中央座標表示 -->
                 <div id="centerCoordDisplay" onclick="openJumpDialog()">中央: @0 0</div>
 
+                <!-- フローティング障害物選択ボタン -->
+                <div class="floating-obstacle-buttons">
+                    <button onclick="selectObstacleType('rock')" id="floatingRockBtn" class="floating-btn" title="岩を配置">🪨</button>
+                    <button onclick="selectObstacleType('custom')" id="floatingCustomBtn" class="floating-btn" title="カスタム障害物を配置">🎨</button>
+                    <button onclick="switchToViewMode()" id="floatingViewBtn" class="floating-btn" title="閲覧モードに切り替え">👁️</button>
+                </div>
+
                 <!-- 座標ジャンプダイアログ -->
                 <div id="jumpDialog">
                     <div>
@@ -949,6 +997,37 @@
                             <button onclick="executeJump()" style="flex: 1;">🚀 ジャンプ</button>
                             <button onclick="closeJumpDialog()" class="secondary" style="flex: 1;">キャンセル</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- カスタム障害物設定ダイアログ -->
+            <div id="customObstacleDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%;">
+                    <h3 style="margin-top: 0;">カスタム障害物を設定</h3>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: bold;">名前:</label>
+                        <input type="text" id="customObstacleName" placeholder="例: 森林、建物など" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: bold;">色:</label>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button onclick="selectCustomColor('#228B22')" style="width: 40px; height: 40px; background: #228B22; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;" title="緑（森林）"></button>
+                            <button onclick="selectCustomColor('#8B4513')" style="width: 40px; height: 40px; background: #8B4513; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;" title="茶色（土地）"></button>
+                            <button onclick="selectCustomColor('#4169E1')" style="width: 40px; height: 40px; background: #4169E1; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;" title="青（水域）"></button>
+                            <button onclick="selectCustomColor('#808080')" style="width: 40px; height: 40px; background: #808080; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;" title="灰色（建物）"></button>
+                            <button onclick="selectCustomColor('#FFD700')" style="width: 40px; height: 40px; background: #FFD700; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;" title="金色（特殊）"></button>
+                            <button onclick="selectCustomColor('#FF4500')" style="width: 40px; height: 40px; background: #FF4500; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;" title="赤（危険）"></button>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px;">カスタムカラー:</label>
+                            <input type="color" id="customColorPicker" value="#228B22" style="width: 60px; height: 40px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+                        </div>
+                        <div id="selectedColorPreview" style="margin-top: 8px; padding: 8px; background: #228B22; border-radius: 4px; color: white; text-align: center; font-weight: bold;">選択中の色</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="confirmCustomObstacle()" style="flex: 1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">確定</button>
+                        <button onclick="closeCustomObstacleDialog()" class="secondary" style="flex: 1;">キャンセル</button>
                     </div>
                 </div>
             </div>
@@ -1099,15 +1178,122 @@
 
         // 障害物タイプを選択
         function selectObstacleType(type) {
+            if (type === 'custom') {
+                // カスタム障害物の場合はダイアログを表示
+                openCustomObstacleDialog();
+                return;
+            }
+
             selectedObstacleType = type;
             currentMode = 'input';
 
-            // ボタンのスタイル更新
+            // サイドバーボタンのスタイル更新
             document.getElementById('rockBtn').style.background = type === 'rock' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '';
-            document.getElementById('customBtn').style.background = type === 'custom' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '';
+            document.getElementById('customBtn').style.background = '';
+
+            // フローティングボタンのスタイル更新
+            updateFloatingButtonsStyle();
 
             console.log(`障害物タイプを選択: ${type}、入力モードに切り替え`);
         }
+
+        // 閲覧モードに切り替え
+        function switchToViewMode() {
+            currentMode = 'view';
+            selectedObstacleType = null;
+
+            // サイドバーボタンのスタイル更新
+            document.getElementById('rockBtn').style.background = '';
+            document.getElementById('customBtn').style.background = '';
+
+            // フローティングボタンのスタイル更新
+            updateFloatingButtonsStyle();
+
+            console.log('閲覧モードに切り替え');
+        }
+
+        // フローティングボタンのスタイル更新
+        function updateFloatingButtonsStyle() {
+            const rockBtn = document.getElementById('floatingRockBtn');
+            const customBtn = document.getElementById('floatingCustomBtn');
+            const viewBtn = document.getElementById('floatingViewBtn');
+
+            // すべてのactiveクラスを削除
+            rockBtn.classList.remove('active');
+            customBtn.classList.remove('active');
+            viewBtn.classList.remove('active');
+
+            // 現在のモードに応じてactiveクラスを追加
+            if (currentMode === 'view') {
+                viewBtn.classList.add('active');
+            } else if (selectedObstacleType === 'rock') {
+                rockBtn.classList.add('active');
+            } else if (selectedObstacleType === 'custom') {
+                customBtn.classList.add('active');
+            }
+        }
+
+        // カスタム障害物ダイアログを開く
+        function openCustomObstacleDialog() {
+            const dialog = document.getElementById('customObstacleDialog');
+            dialog.style.display = 'flex';
+            document.getElementById('customObstacleName').value = '';
+            document.getElementById('customColorPicker').value = '#228B22';
+            customObstacleSettings.color = '#228B22';
+            updateColorPreview('#228B22');
+        }
+
+        // カスタム障害物ダイアログを閉じる
+        function closeCustomObstacleDialog() {
+            document.getElementById('customObstacleDialog').style.display = 'none';
+        }
+
+        // カスタム色を選択
+        function selectCustomColor(color) {
+            customObstacleSettings.color = color;
+            document.getElementById('customColorPicker').value = color;
+            updateColorPreview(color);
+        }
+
+        // 色プレビューを更新
+        function updateColorPreview(color) {
+            const preview = document.getElementById('selectedColorPreview');
+            preview.style.background = color;
+        }
+
+        // カスタム障害物を確定
+        function confirmCustomObstacle() {
+            const name = document.getElementById('customObstacleName').value.trim();
+            if (!name) {
+                alert('障害物の名前を入力してください');
+                return;
+            }
+
+            customObstacleSettings.name = name;
+            customObstacleSettings.color = document.getElementById('customColorPicker').value;
+            selectedObstacleType = 'custom';
+            currentMode = 'input';
+
+            // サイドバーボタンのスタイル更新
+            document.getElementById('rockBtn').style.background = '';
+            document.getElementById('customBtn').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+
+            // フローティングボタンのスタイル更新
+            updateFloatingButtonsStyle();
+
+            closeCustomObstacleDialog();
+            console.log(`カスタム障害物を設定: ${customObstacleSettings.name} (${customObstacleSettings.color})`);
+        }
+
+        // カスタムカラーピッカーのイベントリスナー
+        document.addEventListener('DOMContentLoaded', () => {
+            const colorPicker = document.getElementById('customColorPicker');
+            if (colorPicker) {
+                colorPicker.addEventListener('input', (e) => {
+                    selectCustomColor(e.target.value);
+                });
+            }
+        });
 
         // マウスダウン
         function handleMouseDown(e) {
@@ -1229,6 +1415,13 @@
                     cells: cells,
                     createdAt: new Date().toISOString()
                 };
+
+                // カスタム障害物の場合は名前と色を追加
+                if (selectedObstacleType === 'custom') {
+                    newObstacle.name = customObstacleSettings.name;
+                    newObstacle.color = customObstacleSettings.color;
+                }
+
                 obstaclesRef.child(newObstacle.id).set(newObstacle);
             }
 
@@ -1307,7 +1500,7 @@
                 `;
 
                 const typeIcon = obstacle.type === 'rock' ? '🪨' : '🎨';
-                const typeName = obstacle.type === 'rock' ? '岩' : 'カスタム';
+                const typeName = obstacle.type === 'rock' ? '岩' : (obstacle.name || 'カスタム');
                 const cellCount = obstacle.cells ? obstacle.cells.length : 0;
                 const createdDate = obstacle.createdAt ? new Date(obstacle.createdAt).toLocaleString('ja-JP', {
                     month: '2-digit',
@@ -1316,11 +1509,16 @@
                     minute: '2-digit'
                 }) : '';
 
+                // カスタム障害物の場合は色インジケーターを表示
+                const colorIndicator = obstacle.type === 'custom' && obstacle.color
+                    ? `<span style="display: inline-block; width: 12px; height: 12px; background: ${obstacle.color}; border: 1px solid #999; border-radius: 2px; margin-left: 4px; vertical-align: middle;"></span>`
+                    : '';
+
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-size: 13px; font-weight: bold;">
-                                ${typeIcon} ${typeName}
+                                ${typeIcon} ${typeName}${colorIndicator}
                             </div>
                             <div style="font-size: 11px; color: #666; margin-top: 2px;">
                                 ${cellCount}マス | ${createdDate}
