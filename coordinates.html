@@ -217,7 +217,8 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            min-height: 400px;
+            min-height: 0;
+            max-height: 100%;
         }
 
         .section h2 {
@@ -231,7 +232,7 @@
         .scroll-area {
             flex: 1;
             overflow-y: auto;
-            min-height: 200px;
+            min-height: 0;
         }
 
         /* フィルターコントロール */
@@ -728,22 +729,21 @@
 
             /* その他のセクションの高さを調整 */
             .section {
-                min-height: 300px;
+                min-height: 0;
+                max-height: none;
             }
 
             /* 保存済み座標エリアは特に大きくする */
             .section:has(#coordinatesList) {
-                min-height: 600px;
+                min-height: 0;
             }
 
-            /* グループリストと座標リストのスクロール領域を確保 */
+            /* グループリストと座標リストのスクロール領域は自動調整 */
             #groupsList {
-                max-height: 200px;
                 overflow-y: auto;
             }
 
             #coordinatesList {
-                max-height: 400px;
                 overflow-y: auto;
             }
 
@@ -791,13 +791,13 @@
                 min-height: 300px;
             }
 
-            /* 保存済み座標エリアは極小画面でもしっかり高さ確保 */
+            /* 保存済み座標エリアは極小画面でも自動調整 */
             .section:has(#coordinatesList) {
-                min-height: 550px;
+                min-height: 0;
             }
 
             #coordinatesList {
-                max-height: 350px;
+                overflow-y: auto;
             }
 
             .btn {
@@ -1075,8 +1075,8 @@
             const y = e.clientY - rect.top;
             const worldPos = screenToWorld(x, y);
 
-            if (currentMode === 'view') {
-                // ビューモード：パン操作
+            if (isSpaceKeyPressed || currentMode === 'view') {
+                // Spaceキー押下中またはビューモード：パン操作
                 isPanning = true;
                 lastPanPos = { x: e.clientX, y: e.clientY };
                 canvas.style.cursor = 'grabbing';
@@ -1288,10 +1288,124 @@
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+        }
 
-            // キーボードイベント
-            document.addEventListener('keydown', handleKeyDown);
-            document.addEventListener('keyup', handleKeyUp);
+        // タッチイベントハンドラ
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 1) {
+                const rect = canvas.getBoundingClientRect();
+                const x = touches[0].clientX - rect.left;
+                const y = touches[0].clientY - rect.top;
+                const worldPos = screenToWorld(x, y);
+
+                if (currentMode === 'view') {
+                    // ビューモード：パン操作
+                    isPanning = true;
+                    lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+                } else if (currentMode === 'adjust') {
+                    // 調整モード：座標をタッチしてドラッグ開始
+                    const clickedCoord = findCoordinateAtPosition(worldPos);
+                    if (clickedCoord) {
+                        draggedCoordinate = { ...clickedCoord };
+                    } else {
+                        // 座標以外の場所をタッチした場合はパン操作
+                        isPanning = true;
+                        lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+                    }
+                }
+            } else if (touches.length === 2) {
+                // 2本指：ピンチズーム
+                isPanning = true;
+                draggedCoordinate = null;
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                lastPanPos = {
+                    x: (touches[0].clientX + touches[1].clientX) / 2,
+                    y: (touches[0].clientY + touches[1].clientY) / 2
+                };
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 2) {
+                // ピンチズーム
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (lastTouchDistance > 0) {
+                    const delta = distance / lastTouchDistance;
+                    scale = Math.max(0.5, Math.min(100, scale * delta));
+                }
+                lastTouchDistance = distance;
+
+                // パン操作
+                if (isPanning && lastPanPos) {
+                    const centerX = (touches[0].clientX + touches[1].clientX) / 2;
+                    const centerY = (touches[0].clientY + touches[1].clientY) / 2;
+                    const panDx = centerX - lastPanPos.x;
+                    const panDy = centerY - lastPanPos.y;
+                    offsetX -= panDy / scale;
+                    offsetY -= panDx / scale;
+                    lastPanPos = { x: centerX, y: centerY };
+                }
+                drawMap();
+            } else if (touches.length === 1) {
+                if (draggedCoordinate) {
+                    // 座標ドラッグ移動
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touches[0].clientX - rect.left;
+                    const y = touches[0].clientY - rect.top;
+                    const worldPos = screenToWorld(x, y);
+                    draggedCoordinate.x = worldPos.x;
+                    draggedCoordinate.y = worldPos.y;
+                    drawMap();
+                } else if (isPanning && lastPanPos) {
+                    // 1本指パン
+                    const dx = touches[0].clientX - lastPanPos.x;
+                    const dy = touches[0].clientY - lastPanPos.y;
+                    offsetX -= dy / scale;
+                    offsetY -= dx / scale;
+                    lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+                    drawMap();
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 0) {
+                // すべてのタッチ終了
+                if (draggedCoordinate) {
+                    // 座標の位置を更新
+                    coordinatesRef.child(draggedCoordinate.id).update({
+                        x: draggedCoordinate.x,
+                        y: draggedCoordinate.y
+                    });
+                    draggedCoordinate = null;
+                    console.log('座標を移動しました');
+                }
+                isPanning = false;
+                lastPanPos = null;
+                lastTouchDistance = 0;
+                drawMap();
+            } else if (touches.length === 1) {
+                // 1本指に戻った場合
+                lastTouchDistance = 0;
+                if (!draggedCoordinate && currentMode === 'view') {
+                    isPanning = true;
+                    lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+                }
+            }
         }
 
 

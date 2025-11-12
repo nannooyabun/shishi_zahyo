@@ -97,6 +97,7 @@ let selectedObstacleType = null;
 let tempSelection = new Set();
 let isCreatingCustomObstacle = false;
 let customObstacleInProgress = null;
+let isSpaceKeyPressed = false;
 let rangeSelectMode = false;
 let isFilterActive = false;
 let rangeSelectStart = null;
@@ -899,6 +900,30 @@ function initCommon(canvasId) {
 
     // ウィンドウリサイズイベント
     window.addEventListener('resize', resizeCanvas);
+
+    // キーボードイベント（Spaceキーでパン操作）
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !isSpaceKeyPressed) {
+            // 入力フィールドにフォーカスがある場合は無視
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            e.preventDefault();
+            isSpaceKeyPressed = true;
+            if (canvas) {
+                canvas.style.cursor = 'grab';
+            }
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') {
+            isSpaceKeyPressed = false;
+            if (canvas && !isPanning) {
+                canvas.style.cursor = 'default';
+            }
+        }
+    });
 
     // 初回リサイズ
     resizeCanvas();
