@@ -217,7 +217,8 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            min-height: 400px;
+            min-height: 0;
+            max-height: 100%;
         }
 
         .section h2 {
@@ -231,7 +232,7 @@
         .scroll-area {
             flex: 1;
             overflow-y: auto;
-            min-height: 200px;
+            min-height: 0;
         }
 
         /* フィルターコントロール */
@@ -728,22 +729,21 @@
 
             /* その他のセクションの高さを調整 */
             .section {
-                min-height: 300px;
+                min-height: 0;
+                max-height: none;
             }
 
             /* 保存済み座標エリアは特に大きくする */
             .section:has(#coordinatesList) {
-                min-height: 600px;
+                min-height: 0;
             }
 
-            /* グループリストと座標リストのスクロール領域を確保 */
+            /* グループリストと座標リストのスクロール領域は自動調整 */
             #groupsList {
-                max-height: 200px;
                 overflow-y: auto;
             }
 
             #coordinatesList {
-                max-height: 400px;
                 overflow-y: auto;
             }
 
@@ -791,13 +791,13 @@
                 min-height: 300px;
             }
 
-            /* 保存済み座標エリアは極小画面でもしっかり高さ確保 */
+            /* 保存済み座標エリアは極小画面でも自動調整 */
             .section:has(#coordinatesList) {
-                min-height: 550px;
+                min-height: 0;
             }
 
             #coordinatesList {
-                max-height: 350px;
+                overflow-y: auto;
             }
 
             .btn {
