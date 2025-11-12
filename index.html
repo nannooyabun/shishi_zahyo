@@ -1127,10 +1127,6 @@
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-
-            // キーボードイベント
-            document.addEventListener('keydown', handleKeyDown);
-            document.addEventListener('keyup', handleKeyUp);
         }
 
         // ========================================
@@ -1138,8 +1134,10 @@
         // ========================================
         function handleMouseDown(e) {
             if (e.button !== 0) return;
+            // 常にパン操作（TOPページはビューモードのみ）
             isPanning = true;
             lastPanPos = { x: e.clientX, y: e.clientY };
+            canvas.style.cursor = 'grabbing';
         }
 
         function handleMouseMove(e) {
@@ -1165,6 +1163,11 @@
         function handleMouseUp() {
             isPanning = false;
             lastPanPos = null;
+            if (!isSpaceKeyPressed) {
+                canvas.style.cursor = 'default';
+            } else {
+                canvas.style.cursor = 'grab';
+            }
         }
 
         function handleWheel(e) {

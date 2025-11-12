@@ -1115,8 +1115,8 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            if (currentMode === 'view') {
-                // ビューモード：パン操作
+            if (isSpaceKeyPressed || currentMode === 'view') {
+                // Spaceキー押下中またはビューモード：パン操作
                 isPanning = true;
                 lastPanPos = { x: e.clientX, y: e.clientY };
                 canvas.style.cursor = 'grabbing';
@@ -1159,6 +1159,8 @@
                 lastPanPos = null;
                 canvas.style.cursor = 'default';
             } else if (isDragging && dragStartCell && dragCurrentCell) {
+                // ドラッグ選択を最終更新（クリックのみの場合も対応）
+                updateDragSelection();
                 // ドラッグ選択確定
                 applyDragSelection();
                 isDragging = false;
@@ -1433,6 +1435,125 @@
                 }
                 drawMap();
             }, { passive: false });
+
+            // タッチイベント
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+        }
+
+        // タッチイベントハンドラ
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 1) {
+                const rect = canvas.getBoundingClientRect();
+                const x = touches[0].clientX - rect.left;
+                const y = touches[0].clientY - rect.top;
+
+                if (currentMode === 'view') {
+                    // ビューモード：パン操作
+                    isPanning = true;
+                    lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+                } else if (currentMode === 'input' && selectedObstacleType) {
+                    // 入力モード：ドラッグ選択開始
+                    const cellPos = screenToCellCoord(x, y);
+                    isDragging = true;
+                    dragStartCell = cellPos;
+                    dragCurrentCell = cellPos;
+                    const key = `${cellPos.x},${cellPos.y}`;
+                    const existingObstacle = obstacles.find(o => o.cells && o.cells.includes(key));
+                    dragStartCell.isObstacle = !!existingObstacle;
+                }
+            } else if (touches.length === 2) {
+                // 2本指：ピンチズーム
+                isPanning = true;
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                lastPanPos = {
+                    x: (touches[0].clientX + touches[1].clientX) / 2,
+                    y: (touches[0].clientY + touches[1].clientY) / 2
+                };
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 2) {
+                // ピンチズーム
+                const dx = touches[1].clientX - touches[0].clientX;
+                const dy = touches[1].clientY - touches[0].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (lastTouchDistance > 0) {
+                    const delta = distance / lastTouchDistance;
+                    scale = Math.max(0.5, Math.min(100, scale * delta));
+                }
+                lastTouchDistance = distance;
+
+                // パン操作
+                if (isPanning && lastPanPos) {
+                    const centerX = (touches[0].clientX + touches[1].clientX) / 2;
+                    const centerY = (touches[0].clientY + touches[1].clientY) / 2;
+                    const panDx = centerX - lastPanPos.x;
+                    const panDy = centerY - lastPanPos.y;
+                    offsetX -= panDy / scale;
+                    offsetY -= panDx / scale;
+                    lastPanPos = { x: centerX, y: centerY };
+                }
+                drawMap();
+            } else if (touches.length === 1) {
+                if (isPanning && lastPanPos) {
+                    // 1本指パン
+                    const dx = touches[0].clientX - lastPanPos.x;
+                    const dy = touches[0].clientY - lastPanPos.y;
+                    offsetX -= dy / scale;
+                    offsetY -= dx / scale;
+                    lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+                    drawMap();
+                } else if (currentMode === 'input' && isDragging && dragStartCell) {
+                    // 障害物ドラッグ選択
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touches[0].clientX - rect.left;
+                    const y = touches[0].clientY - rect.top;
+                    const cellPos = screenToCellCoord(x, y);
+                    dragCurrentCell = cellPos;
+                    updateDragSelection();
+                    drawMap();
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            touches = Array.from(e.touches);
+
+            if (touches.length === 0) {
+                // すべてのタッチ終了
+                if (isDragging && dragStartCell && dragCurrentCell) {
+                    // ドラッグ選択確定
+                    updateDragSelection();
+                    applyDragSelection();
+                    isDragging = false;
+                    dragStartCell = null;
+                    dragCurrentCell = null;
+                }
+                isPanning = false;
+                lastPanPos = null;
+                lastTouchDistance = 0;
+                drawMap();
+            } else if (touches.length === 1) {
+                // 1本指に戻った場合
+                lastTouchDistance = 0;
+                if (currentMode === 'view') {
+                    isPanning = true;
+                    lastPanPos = { x: touches[0].clientX, y: touches[0].clientY };
+                }
+            }
         }
 
         // ========================================
