@@ -97,6 +97,7 @@ let selectedObstacleType = null;
 let tempSelection = new Set();
 let isCreatingCustomObstacle = false;
 let customObstacleInProgress = null;
+let customObstacleSettings = { name: '', color: '#228B22' };
 let isSpaceKeyPressed = false;
 let rangeSelectMode = false;
 let isFilterActive = false;
@@ -599,13 +600,35 @@ function drawObstacles() {
 
             // 色を決定
             if (tempSelection.has(cellKey)) {
-                // 描画中（tempSelection内）：明るい茶色
-                ctx.fillStyle = '#D2691E';
+                // 描画中（tempSelection内）
+                if (selectedObstacleType === 'custom' && customObstacleSettings.color) {
+                    // カスタム障害物描画中：設定された色を使用（少し明るく）
+                    const color = customObstacleSettings.color;
+                    const rgb = parseInt(color.slice(1), 16);
+                    const r = Math.min(255, ((rgb >> 16) & 255) + 40);
+                    const g = Math.min(255, ((rgb >> 8) & 255) + 40);
+                    const b = Math.min(255, (rgb & 255) + 40);
+                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                } else {
+                    // 岩描画中：明るい茶色
+                    ctx.fillStyle = '#D2691E';
+                }
             } else if (obstacle.type === 'rock') {
-                // 確定後：濃い茶色（選択時はさらに濃い色）
+                // 確定後の岩：濃い茶色（選択時はさらに濃い色）
                 ctx.fillStyle = selectedObstacleIds.has(obstacle.id) ? '#8B4513' : '#A0522D';
             } else if (obstacle.type === 'custom') {
-                ctx.fillStyle = obstacle.color || '#666';
+                // 確定後のカスタム障害物：指定された色
+                const baseColor = obstacle.color || '#666';
+                if (selectedObstacleIds.has(obstacle.id)) {
+                    // 選択時は少し暗く
+                    const rgb = parseInt(baseColor.slice(1), 16);
+                    const r = Math.max(0, ((rgb >> 16) & 255) - 40);
+                    const g = Math.max(0, ((rgb >> 8) & 255) - 40);
+                    const b = Math.max(0, (rgb & 255) - 40);
+                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                } else {
+                    ctx.fillStyle = baseColor;
+                }
             }
 
             // グリッドのマス目全体を塗りつぶす（4つの角の点を使用）
