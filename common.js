@@ -123,7 +123,6 @@ let touches = [];
 let lastTouchDistance = 0;
 let isPanning = false;
 let lastPanPos = null;
-let isSpaceKeyPressed = false;
 
 // グループ編集用
 let editingGroupId = null;

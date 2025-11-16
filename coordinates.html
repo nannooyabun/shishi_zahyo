@@ -968,8 +968,13 @@
                 <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
                     <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #333;">📝 座標を一括登録</h3>
                     <div style="margin-bottom: 8px;">
-                        <textarea id="coordBatchInput" placeholder="例:&#10;@100 200 城A&#10;@150 250 城B&#10;@200 300 城C" rows="5" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; resize: vertical;"></textarea>
-                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">形式: @X Y 名前（1行に1座標、名前は省略可）</p>
+                        <textarea id="coordBatchInput" placeholder="例:&#10;なんの親分@342 828、菊奴@367 771、杜若奏子@398 786&#10;城A@100 200&#10;城B@150 250 城C@200 300" rows="5" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; resize: vertical;"></textarea>
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">形式: 名前@X Y（区切り文字：、全角スペース、半角スペース、改行）</p>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">カスタム区切り文字（任意）:</label>
+                        <input type="text" id="customDelimiter" placeholder="例: | や # など" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
+                        <p style="margin: 4px 0 0 0; font-size: 10px; color: #999;">※空欄の場合、デフォルトの区切り文字を使用します</p>
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button onclick="batchAddCoordinates()" style="flex: 1; background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">📥 一括登録</button>
@@ -1158,10 +1163,40 @@
         // 複数座標を一括登録
         function batchAddCoordinates() {
             const textarea = document.getElementById('coordBatchInput');
-            const lines = textarea.value.split('\n').filter(line => line.trim());
+            const customDelimiterInput = document.getElementById('customDelimiter');
+            const inputText = textarea.value.trim();
 
-            if (lines.length === 0) {
+            if (!inputText) {
                 alert('座標を入力してください');
+                return;
+            }
+
+            // 区切り文字を決定
+            let delimiter;
+            const customDelimiter = customDelimiterInput.value;
+
+            if (customDelimiter) {
+                // カスタム区切り文字が指定されている場合
+                delimiter = customDelimiter;
+            } else {
+                // デフォルトの区切り文字（、全角スペース、半角スペース、改行）
+                // 正規表現で複数の区切り文字に対応
+                delimiter = /[、\u3000 \n]+/;
+            }
+
+            // 入力テキストを区切り文字で分割
+            let entries;
+            if (typeof delimiter === 'string') {
+                entries = inputText.split(delimiter);
+            } else {
+                entries = inputText.split(delimiter);
+            }
+
+            // 空のエントリを除外
+            entries = entries.filter(entry => entry.trim());
+
+            if (entries.length === 0) {
+                alert('有効な座標が見つかりませんでした');
                 return;
             }
 
@@ -1169,21 +1204,41 @@
             let errorCount = 0;
             const errors = [];
 
-            lines.forEach((line, index) => {
-                const trimmedLine = line.trim();
-                if (!trimmedLine) return;
+            entries.forEach((entry, index) => {
+                const trimmedEntry = entry.trim();
+                if (!trimmedEntry) return;
 
                 // 座標と名前をパース
-                // 形式: @X Y 名前 または X Y 名前
-                const match = trimmedLine.match(/@?\s*(-?\d+)\s+(-?\d+)(?:\s+(.+))?/);
+                // 形式1: 名前@X Y （例：なんの親分@342 828）
+                // 形式2: @X Y 名前 （旧形式）
+                // 形式3: 名前:@X Y （例：菊奴:@367 771）
+                let match = null;
+                let x, y, name;
 
+                // 形式1と形式3: 名前@X Y または 名前:@X Y
+                match = trimmedEntry.match(/^(.+?):?\s*@\s*(-?\d+)\s+(-?\d+)$/);
                 if (match) {
-                    const x = parseInt(match[1]);
-                    const y = parseInt(match[2]);
-                    const name = match[3] ? match[3].trim() : `座標 ${formatCoordinate(x, y)}`;
+                    name = match[1].trim().replace(/:$/, ''); // 末尾の「:」を削除
+                    x = parseInt(match[2]);
+                    y = parseInt(match[3]);
+                } else {
+                    // 形式2: @X Y 名前 または X Y 名前（旧形式）
+                    match = trimmedEntry.match(/@?\s*(-?\d+)\s+(-?\d+)(?:\s+(.+))?/);
+                    if (match) {
+                        x = parseInt(match[1]);
+                        y = parseInt(match[2]);
+                        name = match[3] ? match[3].trim() : `座標 ${formatCoordinate(x, y)}`;
+                    }
+                }
+
+                if (match && x !== undefined && y !== undefined) {
+                    // 名前が空の場合、デフォルト名を設定
+                    if (!name || name === '') {
+                        name = `座標 ${formatCoordinate(x, y)}`;
+                    }
 
                     const newCoord = {
-                        id: `${Date.now()}-${index}`,
+                        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`,
                         x: x,
                         y: y,
                         name: name,
@@ -1195,14 +1250,14 @@
                     console.log(`座標 ${formatCoordinate(x, y)} (${name}) を追加しました`);
                 } else {
                     errorCount++;
-                    errors.push(`${index + 1}行目: ${trimmedLine}`);
+                    errors.push(`エントリ ${index + 1}: ${trimmedEntry}`);
                 }
             });
 
             // 結果を表示
             let message = `登録完了:\n成功: ${successCount}件`;
             if (errorCount > 0) {
-                message += `\n失敗: ${errorCount}件\n\n失敗した行:\n${errors.join('\n')}`;
+                message += `\n失敗: ${errorCount}件\n\n失敗したエントリ:\n${errors.join('\n')}`;
             }
             alert(message);
 
@@ -1214,10 +1269,12 @@
         // 入力クリア
         function clearCoordInput() {
             const textarea = document.getElementById('coordBatchInput');
+            const customDelimiterInput = document.getElementById('customDelimiter');
             if (textarea.value && !confirm('入力内容をクリアしますか？')) {
                 return;
             }
             textarea.value = '';
+            customDelimiterInput.value = '';
         }
 
         // ========================================
