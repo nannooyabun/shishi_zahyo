@@ -727,22 +727,25 @@
 
             /* その他のセクションの高さを調整 */
             .section {
-                min-height: 0;
+                min-height: 400px;
                 max-height: none;
             }
 
-            /* 保存済み座標エリアは特に大きくする */
-            .section:has(#coordinatesList) {
-                min-height: 0;
+            /* 座標入力パネルはより高さを確保 */
+            .section:has(#coordBatchInput) {
+                min-height: 500px;
             }
 
-            /* グループリストと座標リストのスクロール領域は自動調整 */
-            #groupsList {
-                overflow-y: auto;
+            /* グループ管理パネルも高さを確保 */
+            .section:has(#groupsList) {
+                min-height: 400px;
             }
 
-            #coordinatesList {
+            /* スクロール領域は自動調整 */
+            .scroll-area {
+                flex: 1;
                 overflow-y: auto;
+                min-height: 200px;
             }
 
             /* サイドバーの折り畳みボタンを非表示（オーバーレイ形式では不要） */
