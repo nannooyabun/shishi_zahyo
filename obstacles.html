@@ -768,22 +768,25 @@
 
             /* その他のセクションの高さを調整 */
             .section {
-                min-height: 0;
+                min-height: 300px;
                 max-height: none;
             }
 
-            /* 保存済み座標エリアは特に大きくする */
-            .section:has(#coordinatesList) {
-                min-height: 0;
+            /* 障害物描画エリアは特に高さを確保 */
+            .section:has(#obstaclesList) {
+                min-height: 400px;
             }
 
-            /* グループリストと座標リストのスクロール領域は自動調整 */
-            #groupsList {
-                overflow-y: auto;
+            /* カスタム障害物エリアも高さを確保 */
+            .section:has(#customObstaclesList) {
+                min-height: 300px;
             }
 
-            #coordinatesList {
+            /* スクロール領域は自動調整 */
+            .scroll-area {
+                flex: 1;
                 overflow-y: auto;
+                min-height: 150px;
             }
 
             /* サイドバーの折り畳みボタンを非表示（オーバーレイ形式では不要） */
