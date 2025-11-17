@@ -729,11 +729,17 @@
             .section {
                 min-height: auto;
                 max-height: none;
+                height: auto;
             }
 
             /* 折り畳み可能なセクション（モバイル版） */
             .section.collapsible {
                 min-height: auto;
+                height: auto;
+            }
+
+            .section.collapsible:not(.collapsed) {
+                min-height: 500px;
             }
 
             .section.collapsible h2 {
@@ -788,7 +794,8 @@
             .scroll-area {
                 flex: 1;
                 overflow-y: auto;
-                min-height: 200px;
+                min-height: 300px;
+                max-height: none;
             }
 
             /* サイドバーの折り畳みボタンを非表示（オーバーレイ形式では不要） */
