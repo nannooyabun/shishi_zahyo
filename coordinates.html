@@ -1422,32 +1422,6 @@
         }
 
         // ========================================
-        // イベントリスナー設定
-        // ========================================
-        function setupEventListeners() {
-            // マウスイベント
-            canvas.addEventListener('mousedown', handleMouseDown);
-            canvas.addEventListener('mousemove', handleMouseMove);
-            canvas.addEventListener('mouseup', handleMouseUp);
-
-            // ズームイベント
-            canvas.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const worldPos = screenToWorld(x, y);
-
-                if (e.deltaY < 0) {
-                    scale = Math.min(scale * 1.2, 50);
-                } else {
-                    scale = Math.max(scale / 1.2, 1);
-                }
-                drawMap();
-            }, { passive: false });
-        }
-
-        // ========================================
         // ページ初期化
         // ========================================
         document.addEventListener('DOMContentLoaded', () => {
@@ -1459,10 +1433,7 @@
                 return;
             }
 
-            // マウスイベントリスナー登録
-            canvas.addEventListener('mousedown', handleMouseDown);
-            canvas.addEventListener('mousemove', handleMouseMove);
-            canvas.addEventListener('mouseup', handleMouseUp);
+            // mouseleaveイベントのみここで登録（setupEventListeners内に含まれていないため）
             canvas.addEventListener('mouseleave', handleMouseUp);
 
             // Firebaseからデータを読み込み
@@ -1513,7 +1484,22 @@
             canvas.addEventListener('mousedown', handleMouseDown);
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseup', handleMouseUp);
-            canvas.addEventListener('wheel', handleWheel, { passive: false });
+
+            // ズームイベント
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const worldPos = screenToWorld(x, y);
+
+                if (e.deltaY < 0) {
+                    scale = Math.min(scale * 1.2, 50);
+                } else {
+                    scale = Math.max(scale / 1.2, 1);
+                }
+                drawMap();
+            }, { passive: false });
 
             // タッチイベント
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
