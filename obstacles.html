@@ -805,13 +805,14 @@
             }
 
             .section.collapsible .section-content {
-                max-height: 2000px;
-                overflow: hidden;
+                max-height: 10000px;
+                overflow: visible;
                 transition: max-height 0.3s ease;
             }
 
             .section.collapsible.collapsed .section-content {
                 max-height: 0;
+                overflow: hidden;
             }
 
             /* 障害物描画エリアは特に高さを確保 */
@@ -1638,10 +1639,13 @@
             // モバイル版でのみ機能を有効化
             if (window.innerWidth <= 768) {
                 const collapsibleSections = document.querySelectorAll('.section.collapsible');
+                console.log('Found collapsible sections:', collapsibleSections.length);
                 collapsibleSections.forEach(section => {
                     const header = section.querySelector('h2');
                     if (header) {
-                        header.addEventListener('click', () => {
+                        header.style.cursor = 'pointer';
+                        header.addEventListener('click', (e) => {
+                            console.log('Header clicked:', header.textContent);
                             section.classList.toggle('collapsed');
                         });
                     }
