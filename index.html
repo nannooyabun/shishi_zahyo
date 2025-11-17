@@ -727,13 +727,55 @@
 
             /* その他のセクションの高さを調整 */
             .section {
-                min-height: 400px;
+                min-height: auto;
                 max-height: none;
+            }
+
+            /* 折り畳み可能なセクション（モバイル版） */
+            .section.collapsible {
+                min-height: auto;
+            }
+
+            .section.collapsible h2 {
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px;
+                margin: -20px -20px 15px -20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 8px 8px 0 0;
+                user-select: none;
+            }
+
+            .section.collapsible h2:hover {
+                background: linear-gradient(135deg, #7c8ef0 0%, #8a5cb0 100%);
+            }
+
+            .section.collapsible h2::after {
+                content: '▼';
+                font-size: 14px;
+                transition: transform 0.3s ease;
+            }
+
+            .section.collapsible.collapsed h2::after {
+                transform: rotate(-90deg);
+            }
+
+            .section.collapsible .section-content {
+                max-height: 2000px;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+
+            .section.collapsible.collapsed .section-content {
+                max-height: 0;
             }
 
             /* 保存済み座標エリアは特に大きくする */
             .section:has(#coordinatesList) {
-                min-height: 500px;
+                min-height: auto;
             }
 
             /* グループリストと座標リストのスクロール領域は自動調整 */
@@ -950,81 +992,85 @@
             </div>
 
             <!-- グループ管理 -->
-            <div class="section">
+            <div class="section collapsible collapsed">
                 <h2>📁 グループ管理</h2>
 
-                <!-- グループ検索・ソート -->
-                <div class="filter-controls" style="margin-bottom: 8px;">
-                    <input type="text" id="groupNameFilter" placeholder="グループ名で検索" onkeyup="applyGroupFilters()" style="width: 100%;">
-                </div>
-                <div class="filter-controls" style="display: flex; gap: 8px; margin-bottom: 8px;">
-                    <select id="groupSortBy" onchange="applyGroupFilters()" style="flex: 1;">
-                        <option value="date-desc">作成日時（新しい順）</option>
-                        <option value="date-asc">作成日時（古い順）</option>
-                        <option value="name-asc">名前（A→Z）</option>
-                        <option value="name-desc">名前（Z→A）</option>
-                        <option value="count-desc">登録件数（多い順）</option>
-                        <option value="count-asc">登録件数（少ない順）</option>
-                    </select>
-                </div>
+                <div class="section-content">
+                    <!-- グループ検索・ソート -->
+                    <div class="filter-controls" style="margin-bottom: 8px;">
+                        <input type="text" id="groupNameFilter" placeholder="グループ名で検索" onkeyup="applyGroupFilters()" style="width: 100%;">
+                    </div>
+                    <div class="filter-controls" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <select id="groupSortBy" onchange="applyGroupFilters()" style="flex: 1;">
+                            <option value="date-desc">作成日時（新しい順）</option>
+                            <option value="date-asc">作成日時（古い順）</option>
+                            <option value="name-asc">名前（A→Z）</option>
+                            <option value="name-desc">名前（Z→A）</option>
+                            <option value="count-desc">登録件数（多い順）</option>
+                            <option value="count-asc">登録件数（少ない順）</option>
+                        </select>
+                    </div>
 
-                <div class="scroll-area" id="groupsList">
-                    <p style="color: #999; text-align: center;">読み込み中...</p>
+                    <div class="scroll-area" id="groupsList">
+                        <p style="color: #999; text-align: center;">読み込み中...</p>
+                    </div>
                 </div>
             </div>
 
             <!-- 保存済み座標 -->
-            <div class="section">
+            <div class="section collapsible collapsed">
                 <h2>📍 保存済み座標</h2>
 
-                <!-- フィルター・ソート -->
-                <div class="filter-controls">
-                    <input type="text" id="nameFilter" placeholder="名称検索" onkeyup="applyFilters()" style="width: 100%;">
-                </div>
-                <div class="filter-controls" style="display: flex; gap: 10px; align-items: center;">
-                    <input type="date" id="dateFilterFrom" onchange="applyFilters()" style="flex: 1;">
-                    <span>から</span>
-                    <input type="date" id="dateFilterTo" onchange="applyFilters()" style="flex: 1;">
-                </div>
-                <div class="filter-controls" style="display: flex; gap: 5px; margin-top: 5px;">
-                    <button onclick="setDateFilter('today')" class="secondary" style="flex: 1; padding: 6px;">今日</button>
-                    <button onclick="setDateFilter('week')" class="secondary" style="flex: 1; padding: 6px;">今週</button>
-                    <button onclick="setDateFilter('month')" class="secondary" style="flex: 1; padding: 6px;">今月</button>
-                    <button onclick="setDateFilter('year')" class="secondary" style="flex: 1; padding: 6px;">今年</button>
-                </div>
-                <div class="filter-controls">
-                    <select id="sortBy" onchange="applyFilters()">
-                        <option value="date-desc">登録日時(新→古)</option>
-                        <option value="date-asc">登録日時(古→新)</option>
-                        <option value="name-asc">名前(A→Z)</option>
-                        <option value="name-desc">名前(Z→A)</option>
-                        <option value="x-asc">X座標(小→大)</option>
-                        <option value="x-desc">X座標(大→小)</option>
-                        <option value="y-asc">Y座標(小→大)</option>
-                        <option value="y-desc">Y座標(大→小)</option>
-                    </select>
-                    <button onclick="clearFilters()" class="secondary" style="width: auto; padding: 8px 16px; margin: 0;">フィルタ解除</button>
-                </div>
+                <div class="section-content">
+                    <!-- フィルター・ソート -->
+                    <div class="filter-controls">
+                        <input type="text" id="nameFilter" placeholder="名称検索" onkeyup="applyFilters()" style="width: 100%;">
+                    </div>
+                    <div class="filter-controls" style="display: flex; gap: 10px; align-items: center;">
+                        <input type="date" id="dateFilterFrom" onchange="applyFilters()" style="flex: 1;">
+                        <span>から</span>
+                        <input type="date" id="dateFilterTo" onchange="applyFilters()" style="flex: 1;">
+                    </div>
+                    <div class="filter-controls" style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button onclick="setDateFilter('today')" class="secondary" style="flex: 1; padding: 6px;">今日</button>
+                        <button onclick="setDateFilter('week')" class="secondary" style="flex: 1; padding: 6px;">今週</button>
+                        <button onclick="setDateFilter('month')" class="secondary" style="flex: 1; padding: 6px;">今月</button>
+                        <button onclick="setDateFilter('year')" class="secondary" style="flex: 1; padding: 6px;">今年</button>
+                    </div>
+                    <div class="filter-controls">
+                        <select id="sortBy" onchange="applyFilters()">
+                            <option value="date-desc">登録日時(新→古)</option>
+                            <option value="date-asc">登録日時(古→新)</option>
+                            <option value="name-asc">名前(A→Z)</option>
+                            <option value="name-desc">名前(Z→A)</option>
+                            <option value="x-asc">X座標(小→大)</option>
+                            <option value="x-desc">X座標(大→小)</option>
+                            <option value="y-asc">Y座標(小→大)</option>
+                            <option value="y-desc">Y座標(大→小)</option>
+                        </select>
+                        <button onclick="clearFilters()" class="secondary" style="width: auto; padding: 8px 16px; margin: 0;">フィルタ解除</button>
+                    </div>
 
-                <!-- フィルタ表示エリア -->
-                <div id="activeFiltersDisplay" class="active-filters-display" style="display: none;"></div>
+                    <!-- フィルタ表示エリア -->
+                    <div id="activeFiltersDisplay" class="active-filters-display" style="display: none;"></div>
 
-                <!-- 選択件数表示 -->
-                <div id="selectedCountDisplay" style="background: #e3f2fd; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-weight: bold; color: #1976d2; display: none;">
-                    選択中: <span id="selectedCountNumber">0</span>件
-                </div>
+                    <!-- 選択件数表示 -->
+                    <div id="selectedCountDisplay" style="background: #e3f2fd; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-weight: bold; color: #1976d2; display: none;">
+                        選択中: <span id="selectedCountNumber">0</span>件
+                    </div>
 
-                <div class="scroll-area" id="coordinatesList">
-                    <p style="color: #999; text-align: center;">読み込み中...</p>
-                </div>
+                    <div class="scroll-area" id="coordinatesList">
+                        <p style="color: #999; text-align: center;">読み込み中...</p>
+                    </div>
 
-                <div class="map-controls" style="margin-top: 12px;">
-                    <button onclick="showSelectedCoordinatesOnly()" class="secondary">👁️ 選択済み座標のみ表示</button>
-                    <button onclick="showAllCoordinates()" class="secondary">👁️ すべて表示</button>
-                </div>
-                <div class="map-controls" style="margin-top: 8px;">
-                    <button onclick="copyDataToClipboard()" style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); flex: 1;">📋 クリップボードにコピー</button>
-                    <button onclick="exportToCSV()" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); flex: 1;">📊 CSV出力</button>
+                    <div class="map-controls" style="margin-top: 12px;">
+                        <button onclick="showSelectedCoordinatesOnly()" class="secondary">👁️ 選択済み座標のみ表示</button>
+                        <button onclick="showAllCoordinates()" class="secondary">👁️ すべて表示</button>
+                    </div>
+                    <div class="map-controls" style="margin-top: 8px;">
+                        <button onclick="copyDataToClipboard()" style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); flex: 1;">📋 クリップボードにコピー</button>
+                        <button onclick="exportToCSV()" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); flex: 1;">📊 CSV出力</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1061,6 +1107,24 @@
         }
 
         // ========================================
+        // モバイル版パネル折り畳み機能
+        // ========================================
+        function initCollapsiblePanels() {
+            // モバイル版でのみ機能を有効化
+            if (window.innerWidth <= 768) {
+                const collapsibleSections = document.querySelectorAll('.section.collapsible');
+                collapsibleSections.forEach(section => {
+                    const header = section.querySelector('h2');
+                    if (header) {
+                        header.addEventListener('click', () => {
+                            section.classList.toggle('collapsed');
+                        });
+                    }
+                });
+            }
+        }
+
+        // ========================================
         // ページ初期化
         // ========================================
         document.addEventListener('DOMContentLoaded', () => {
@@ -1077,6 +1141,9 @@
 
             // イベントリスナー設定
             setupEventListeners();
+
+            // モバイル版パネル折り畳み機能の初期化
+            initCollapsiblePanels();
 
             console.log('TOPページの初期化完了');
         });
