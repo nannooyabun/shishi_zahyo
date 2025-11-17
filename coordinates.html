@@ -216,7 +216,7 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: auto;
             min-height: 400px;
         }
 
@@ -1273,11 +1273,12 @@
             } else {
                 // デフォルト：@記号を基準に座標を抽出
                 // 正規表現で「名前@X Y」のパターンを全て抽出
-                const pattern = /([^\s@]+)\s*@\s*(-?\d+)\s+(-?\d+)/g;
+                // 名前部分：区切り文字（、:,）、スペース、@以外の文字
+                const pattern = /([^、:,\s@]+)\s*[、:,]?\s*@\s*(-?\d+)\s+(-?\d+)/g;
                 let match;
 
                 while ((match = pattern.exec(text)) !== null) {
-                    const name = match[1].trim().replace(/:$/, ''); // 末尾の「:」を削除
+                    const name = match[1].trim(); // 区切り文字はパターンで既に除外済み
                     const x = parseInt(match[2]);
                     const y = parseInt(match[3]);
 
@@ -1303,10 +1304,10 @@
             if (!entry) return null;
 
             // 形式1: 名前@X Y （例：なんの親分@342 828）
-            let match = entry.match(/^(.+?):?\s*@\s*(-?\d+)\s+(-?\d+)$/);
+            let match = entry.match(/^(.+?)[、:,]?\s*@\s*(-?\d+)\s+(-?\d+)$/);
             if (match) {
                 return {
-                    name: match[1].trim().replace(/:$/, ''),
+                    name: match[1].trim().replace(/[、:,]+$/, ''), // 末尾の区切り文字を削除
                     x: parseInt(match[2]),
                     y: parseInt(match[3])
                 };
