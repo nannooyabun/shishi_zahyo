@@ -1027,17 +1027,43 @@
                 <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
                     <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #333;">📝 座標を一括登録</h3>
                     <div style="margin-bottom: 8px;">
-                        <textarea id="coordBatchInput" placeholder="例:&#10;なんの親分@342 828、菊奴@367 771、杜若奏子@398 786&#10;城A@100 200&#10;城B@150 250 城C@200 300" rows="5" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; resize: vertical;"></textarea>
-                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">形式: 名前@X Y（区切り文字：、全角スペース、半角スペース、改行）</p>
+                        <textarea id="coordBatchInput" placeholder="例:&#10;なんの親分@342 828&#10;菊奴@367 771&#10;杜若奏子@398 786&#10;&#10;または：&#10;城A@100 200 城B@150 250 城C@200 300&#10;&#10;区切り文字：改行、全角スペース、、（読点）" rows="5" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; resize: vertical;"></textarea>
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">形式: 名前@X Y（X座標とY座標の間は半角スペース）<br>区切り：改行、全角スペース、、（読点）、または半角スペース区切りで複数入力可</p>
                     </div>
                     <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">カスタム区切り文字（任意）:</label>
-                        <input type="text" id="customDelimiter" placeholder="例: | や # など" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
-                        <p style="margin: 4px 0 0 0; font-size: 10px; color: #999;">※空欄の場合、デフォルトの区切り文字を使用します</p>
+                        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">
+                            <input type="checkbox" id="useCustomDelimiter" onchange="toggleCustomDelimiter()">
+                            カスタム区切り文字を使用
+                        </label>
+                        <input type="text" id="customDelimiter" placeholder="例: | や # など" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; display: none;">
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button onclick="batchAddCoordinates()" style="flex: 1; background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">📥 一括登録</button>
+                        <button onclick="parseAndPreviewCoordinates()" style="flex: 1; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">🔍 解析してプレビュー</button>
                         <button onclick="clearCoordInput()" class="secondary" style="flex: 1; padding: 10px;">🗑️ クリア</button>
+                    </div>
+
+                    <!-- プレビューテーブル -->
+                    <div id="coordPreviewArea" style="display: none; margin-top: 12px; background: white; padding: 12px; border-radius: 8px; border: 2px solid #2196f3;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #333;">📋 解析結果プレビュー（編集可能）</h4>
+                        <div style="overflow-x: auto; max-height: 300px; overflow-y: auto;">
+                            <table id="coordPreviewTable" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                                <thead>
+                                    <tr style="background: #e3f2fd; position: sticky; top: 0;">
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: center; width: 40px;">No.</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">名前</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: center; width: 80px;">X座標</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: center; width: 80px;">Y座標</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: center; width: 60px;">削除</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coordPreviewTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                            <button onclick="confirmAndRegisterCoordinates()" style="flex: 1; background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">✅ 確認して登録</button>
+                            <button onclick="cancelPreview()" class="secondary" style="flex: 1; padding: 10px;">❌ キャンセル</button>
+                        </div>
                     </div>
                 </div>
 
@@ -1222,10 +1248,85 @@
             return null;
         }
 
-        // 複数座標を一括登録
-        function batchAddCoordinates() {
+        // ========================================
+        // 座標の一括登録機能
+        // ========================================
+
+        // カスタム区切り文字の表示/非表示切替
+        function toggleCustomDelimiter() {
+            const checkbox = document.getElementById('useCustomDelimiter');
+            const input = document.getElementById('customDelimiter');
+            input.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        // テキストから座標を解析（改善版）
+        function parseCoordinatesFromText(text, customDelimiter) {
+            const coordinates = [];
+
+            if (customDelimiter) {
+                // カスタム区切り文字が指定されている場合
+                const entries = text.split(customDelimiter).filter(e => e.trim());
+                entries.forEach(entry => {
+                    const coord = parseCoordinateEntry(entry.trim());
+                    if (coord) coordinates.push(coord);
+                });
+            } else {
+                // デフォルト：@記号を基準に座標を抽出
+                // 正規表現で「名前@X Y」のパターンを全て抽出
+                const pattern = /([^\s@]+)\s*@\s*(-?\d+)\s+(-?\d+)/g;
+                let match;
+
+                while ((match = pattern.exec(text)) !== null) {
+                    const name = match[1].trim().replace(/:$/, ''); // 末尾の「:」を削除
+                    const x = parseInt(match[2]);
+                    const y = parseInt(match[3]);
+
+                    coordinates.push({ name, x, y });
+                }
+
+                // @記号でマッチしなかった場合、デフォルト区切り文字で分割して試す
+                // デフォルト区切り文字：改行、全角スペース、読点
+                if (coordinates.length === 0) {
+                    const entries = text.split(/[、\u3000\n]+/).filter(e => e.trim());
+                    entries.forEach(entry => {
+                        const coord = parseCoordinateEntry(entry.trim());
+                        if (coord) coordinates.push(coord);
+                    });
+                }
+            }
+
+            return coordinates;
+        }
+
+        // 単一の座標エントリをパース
+        function parseCoordinateEntry(entry) {
+            if (!entry) return null;
+
+            // 形式1: 名前@X Y （例：なんの親分@342 828）
+            let match = entry.match(/^(.+?):?\s*@\s*(-?\d+)\s+(-?\d+)$/);
+            if (match) {
+                return {
+                    name: match[1].trim().replace(/:$/, ''),
+                    x: parseInt(match[2]),
+                    y: parseInt(match[3])
+                };
+            }
+
+            // 形式2: @X Y 名前 （旧形式）
+            match = entry.match(/^@?\s*(-?\d+)\s+(-?\d+)(?:\s+(.+))?$/);
+            if (match) {
+                const x = parseInt(match[1]);
+                const y = parseInt(match[2]);
+                const name = match[3] ? match[3].trim() : `座標 ${formatCoordinate(x, y)}`;
+                return { name, x, y };
+            }
+
+            return null;
+        }
+
+        // 座標を解析してプレビュー表示
+        function parseAndPreviewCoordinates() {
             const textarea = document.getElementById('coordBatchInput');
-            const customDelimiterInput = document.getElementById('customDelimiter');
             const inputText = textarea.value.trim();
 
             if (!inputText) {
@@ -1233,70 +1334,112 @@
                 return;
             }
 
-            // 区切り文字を決定
-            let delimiter;
-            const customDelimiter = customDelimiterInput.value;
+            // カスタム区切り文字の取得
+            const useCustom = document.getElementById('useCustomDelimiter').checked;
+            const customDelimiter = useCustom ? document.getElementById('customDelimiter').value : null;
 
-            if (customDelimiter) {
-                // カスタム区切り文字が指定されている場合
-                delimiter = customDelimiter;
-            } else {
-                // デフォルトの区切り文字（、全角スペース、半角スペース、改行）
-                // 正規表現で複数の区切り文字に対応
-                delimiter = /[、\u3000 \n]+/;
+            // 座標を解析
+            const coordinates = parseCoordinatesFromText(inputText, customDelimiter);
+
+            if (coordinates.length === 0) {
+                alert('有効な座標が見つかりませんでした。\n\n形式: 名前@X Y\n例: なんの親分@342 828');
+                return;
             }
 
-            // 入力テキストを区切り文字で分割
-            let entries;
-            if (typeof delimiter === 'string') {
-                entries = inputText.split(delimiter);
-            } else {
-                entries = inputText.split(delimiter);
+            // プレビュー表示
+            showCoordinatePreview(coordinates);
+        }
+
+        // プレビューテーブルを表示
+        function showCoordinatePreview(coordinates) {
+            const previewArea = document.getElementById('coordPreviewArea');
+            const tbody = document.getElementById('coordPreviewTableBody');
+
+            // テーブルをクリア
+            tbody.innerHTML = '';
+
+            // 各座標を行として追加
+            coordinates.forEach((coord, index) => {
+                const row = document.createElement('tr');
+                row.style.background = index % 2 === 0 ? '#fafafa' : 'white';
+
+                row.innerHTML = `
+                    <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${index + 1}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd;">
+                        <input type="text" value="${coord.name}"
+                               style="width: 100%; border: 1px solid #ccc; padding: 4px; border-radius: 3px;"
+                               data-index="${index}" data-field="name">
+                    </td>
+                    <td style="padding: 6px; border: 1px solid #ddd;">
+                        <input type="number" value="${coord.x}"
+                               style="width: 100%; border: 1px solid #ccc; padding: 4px; border-radius: 3px; text-align: center;"
+                               data-index="${index}" data-field="x">
+                    </td>
+                    <td style="padding: 6px; border: 1px solid #ddd;">
+                        <input type="number" value="${coord.y}"
+                               style="width: 100%; border: 1px solid #ccc; padding: 4px; border-radius: 3px; text-align: center;"
+                               data-index="${index}" data-field="y">
+                    </td>
+                    <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">
+                        <button onclick="removePreviewRow(this)"
+                                style="background: #f44336; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                            🗑️
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(row);
+            });
+
+            // プレビューエリアを表示
+            previewArea.style.display = 'block';
+        }
+
+        // プレビューテーブルの行を削除
+        function removePreviewRow(button) {
+            const row = button.closest('tr');
+            row.remove();
+
+            // 行番号を振り直す
+            const tbody = document.getElementById('coordPreviewTableBody');
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                row.querySelector('td:first-child').textContent = index + 1;
+                row.style.background = index % 2 === 0 ? '#fafafa' : 'white';
+            });
+        }
+
+        // プレビューテーブルから座標を取得して登録
+        function confirmAndRegisterCoordinates() {
+            const tbody = document.getElementById('coordPreviewTableBody');
+            const rows = tbody.querySelectorAll('tr');
+
+            if (rows.length === 0) {
+                alert('登録する座標がありません');
+                return;
             }
 
-            // 空のエントリを除外
-            entries = entries.filter(entry => entry.trim());
-
-            if (entries.length === 0) {
-                alert('有効な座標が見つかりませんでした');
+            // 確認ダイアログ
+            if (!confirm(`${rows.length}件の座標を登録しますか？`)) {
                 return;
             }
 
             let successCount = 0;
             let errorCount = 0;
-            const errors = [];
 
-            entries.forEach((entry, index) => {
-                const trimmedEntry = entry.trim();
-                if (!trimmedEntry) return;
+            rows.forEach((row, index) => {
+                try {
+                    const nameInput = row.querySelector('[data-field="name"]');
+                    const xInput = row.querySelector('[data-field="x"]');
+                    const yInput = row.querySelector('[data-field="y"]');
 
-                // 座標と名前をパース
-                // 形式1: 名前@X Y （例：なんの親分@342 828）
-                // 形式2: @X Y 名前 （旧形式）
-                // 形式3: 名前:@X Y （例：菊奴:@367 771）
-                let match = null;
-                let x, y, name;
+                    const name = nameInput.value.trim();
+                    const x = parseInt(xInput.value);
+                    const y = parseInt(yInput.value);
 
-                // 形式1と形式3: 名前@X Y または 名前:@X Y
-                match = trimmedEntry.match(/^(.+?):?\s*@\s*(-?\d+)\s+(-?\d+)$/);
-                if (match) {
-                    name = match[1].trim().replace(/:$/, ''); // 末尾の「:」を削除
-                    x = parseInt(match[2]);
-                    y = parseInt(match[3]);
-                } else {
-                    // 形式2: @X Y 名前 または X Y 名前（旧形式）
-                    match = trimmedEntry.match(/@?\s*(-?\d+)\s+(-?\d+)(?:\s+(.+))?/);
-                    if (match) {
-                        x = parseInt(match[1]);
-                        y = parseInt(match[2]);
-                        name = match[3] ? match[3].trim() : `座標 ${formatCoordinate(x, y)}`;
-                    }
-                }
-
-                if (match && x !== undefined && y !== undefined) {
-                    // 名前が空の場合、デフォルト名を設定
-                    if (!name || name === '') {
-                        name = `座標 ${formatCoordinate(x, y)}`;
+                    if (!name || isNaN(x) || isNaN(y)) {
+                        errorCount++;
+                        return;
                     }
 
                     const newCoord = {
@@ -1309,34 +1452,48 @@
 
                     coordinatesRef.child(newCoord.id).set(newCoord);
                     successCount++;
-                    console.log(`座標 ${formatCoordinate(x, y)} (${name}) を追加しました`);
-                } else {
+                } catch (error) {
+                    console.error('座標登録エラー:', error);
                     errorCount++;
-                    errors.push(`エントリ ${index + 1}: ${trimmedEntry}`);
                 }
             });
 
             // 結果を表示
             let message = `登録完了:\n成功: ${successCount}件`;
             if (errorCount > 0) {
-                message += `\n失敗: ${errorCount}件\n\n失敗したエントリ:\n${errors.join('\n')}`;
+                message += `\n失敗: ${errorCount}件`;
             }
             alert(message);
 
             if (successCount > 0) {
-                textarea.value = '';
+                // 入力とプレビューをクリア
+                document.getElementById('coordBatchInput').value = '';
+                cancelPreview();
             }
+        }
+
+        // プレビューをキャンセル
+        function cancelPreview() {
+            const previewArea = document.getElementById('coordPreviewArea');
+            previewArea.style.display = 'none';
+            document.getElementById('coordPreviewTableBody').innerHTML = '';
         }
 
         // 入力クリア
         function clearCoordInput() {
             const textarea = document.getElementById('coordBatchInput');
             const customDelimiterInput = document.getElementById('customDelimiter');
+            const useCustomCheckbox = document.getElementById('useCustomDelimiter');
+
             if (textarea.value && !confirm('入力内容をクリアしますか？')) {
                 return;
             }
+
             textarea.value = '';
             customDelimiterInput.value = '';
+            useCustomCheckbox.checked = false;
+            toggleCustomDelimiter();
+            cancelPreview();
         }
 
         // ========================================
