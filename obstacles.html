@@ -681,6 +681,13 @@
 
         /* スマホ用のレスポンシブデザイン */
         @media (max-width: 768px) {
+            /* bodyの高さ制限を解除してスクロール可能に */
+            body {
+                height: auto;
+                min-height: 100vh;
+                overflow-y: auto;
+            }
+
             /* ハンバーガーメニューボタンを表示 */
             .hamburger-menu {
                 display: flex;
@@ -1651,10 +1658,20 @@
                     const header = section.querySelector('h2');
                     if (header) {
                         header.style.cursor = 'pointer';
-                        header.addEventListener('click', (e) => {
-                            console.log('Header clicked:', header.textContent);
+                        header.style.webkitTapHighlightColor = 'rgba(255,255,255,0.3)';
+
+                        const toggleSection = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Header toggled:', header.textContent);
                             section.classList.toggle('collapsed');
-                        });
+                        };
+
+                        // クリックイベント（デスクトップ＆タブレット用）
+                        header.addEventListener('click', toggleSection);
+
+                        // タッチイベント（モバイル用）
+                        header.addEventListener('touchend', toggleSection);
                     }
                 });
             }
